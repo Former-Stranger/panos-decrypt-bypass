@@ -104,7 +104,7 @@ async def login(req: LoginRequest, request: Request):
     client = request.client.host if request.client else "unknown"
     if auth.locked_out(client):
         raise HTTPException(429, "Too many failed attempts. Try again in a few minutes.")
-    if not auth.check_password(req.password):
+    if not await asyncio.to_thread(auth.check_password, req.password):
         auth.record_failure(client)
         await asyncio.sleep(1)
         raise HTTPException(401, "Wrong password.")

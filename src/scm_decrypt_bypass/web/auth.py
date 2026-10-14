@@ -1,9 +1,11 @@
 """Single-password login for the web GUI.
 
-The password comes from WEBGUI_PASSWORD. A successful login sets a signed,
-HttpOnly, SameSite=Strict session cookie. The signing key is random, kept in
-DATA_DIR/.session-key, and mixed with the password, so changing the password
-signs everyone out. Repeated failures from one client are throttled.
+The password comes from WEBGUI_PASSWORD. It's held only as an scrypt hash,
+and login attempts are checked with scrypt too. A successful login sets a
+signed, HttpOnly, SameSite=Strict session cookie. The signing key is random,
+kept in DATA_DIR/.session-key, and combined with the password hash, so
+changing the password signs everyone out. Repeated failures from one client
+are throttled.
 """
 
 import hashlib
@@ -17,6 +19,7 @@ from pathlib import Path
 COOKIE = "sdb_session"
 FAILURE_WINDOW = 600  # seconds
 FAILURE_LIMIT = 10  # failures per client per window before refusing
+SCRYPT = {"n": 2**14, "r": 8, "p": 1, "dklen": 32}  # ~16 MiB, tens of ms per check
 
 
 def load_key(path: Path) -> bytes:
@@ -39,8 +42,12 @@ class Auth:
         self.enabled = enabled
         self.max_age = session_hours * 3600
         self.cookie_secure = cookie_secure
-        self._password = password.encode()
-        self._key = hmac.new(load_key(key_path), self._password, hashlib.sha256).digest() if enabled else b""
+        file_key = load_key(key_path) if enabled else secrets.token_bytes(32)
+        # A salt that's stable across restarts (so sessions survive them) but
+        # unique to this install.
+        self._salt = hmac.new(file_key, b"password-salt", hashlib.sha256).digest()
+        self._password_hash = self._scrypt(password)
+        self._key = hmac.new(file_key, self._password_hash, hashlib.sha256).digest()
         self._failures: dict[str, list[float]] = {}
         self._lock = threading.Lock()
 
@@ -64,9 +71,11 @@ class Auth:
         except ValueError:
             return False
 
+    def _scrypt(self, password: str) -> bytes:
+        return hashlib.scrypt(password.encode(), salt=self._salt, **SCRYPT)
+
     def check_password(self, attempt: str) -> bool:
-        # Compare digests so the comparison time doesn't depend on length.
-        return hmac.compare_digest(hashlib.sha256(attempt.encode()).digest(), hashlib.sha256(self._password).digest())
+        return hmac.compare_digest(self._scrypt(attempt), self._password_hash)
 
     def locked_out(self, client: str) -> bool:
         with self._lock:
