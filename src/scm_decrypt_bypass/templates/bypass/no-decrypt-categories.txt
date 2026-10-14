@@ -1,0 +1,16 @@
+# Predefined PAN-DB URL categories bypassed by a no-decrypt policy rule.
+#
+# The usual privacy carve-outs are financial-services, health-and-medicine and
+# government. Names must be PAN-DB category names exactly as SCM shows them
+# (lowercase, hyphenated); SCM rejects unknown names at apply time.
+#
+# Other categories people commonly bypass:
+#   financial-services, health-and-medicine, government, legal,
+#   personal-sites-and-blogs, shopping, online-storage-and-backup,
+#   computer-and-internet-info, business-and-economy
+#
+# Format: one category per line.
+#
+# Examples:
+# financial-services
+# health-and-medicine

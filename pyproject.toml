@@ -1,0 +1,67 @@
+[project]
+name = "scm-decrypt-bypass"
+version = "0.1.0"
+description = "Find TLS decryption failures on Palo Alto Networks firewalls and bypass them through Strata Cloud Manager with Terraform"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Former-Stranger" }]
+requires-python = ">=3.12"
+keywords = ["palo-alto-networks", "strata-cloud-manager", "ssl-decryption", "tls", "terraform", "firewall"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Web Environment",
+    "Intended Audience :: System Administrators",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: MacOS",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: System :: Networking :: Firewalls",
+]
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn>=0.32",
+    "tzdata>=2024.1",
+]
+
+[project.urls]
+Homepage = "https://github.com/Former-Stranger/scm-decrypt-bypass"
+Documentation = "https://github.com/Former-Stranger/scm-decrypt-bypass/tree/main/docs"
+Issues = "https://github.com/Former-Stranger/scm-decrypt-bypass/issues"
+Changelog = "https://github.com/Former-Stranger/scm-decrypt-bypass/blob/main/CHANGELOG.md"
+
+[project.scripts]
+scm-decrypt-bypass = "scm_decrypt_bypass.cli:main"
+
+[dependency-groups]
+dev = ["ruff>=0.6"]
+
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/scm_decrypt_bypass"]
+exclude = ["src/scm_decrypt_bypass/terraform/tests", "src/scm_decrypt_bypass/terraform/.terraform"]
+
+[tool.hatch.build.targets.sdist]
+include = ["src", "tests", "docs", "examples", "README.md", "LICENSE", "CHANGELOG.md"]
+
+[tool.ruff]
+line-length = 150
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "S", "SIM"]
+ignore = [
+    "S101",  # assert in tests
+    "S603",  # subprocess without shell: arguments are fixed
+    "S607",  # terraform / setpriv found on PATH by design
+    "S310",  # urlopen of fixed https endpoints
+    "S324",  # hash in fixture-only code paths
+    "SIM105",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S", "B", "E501", "E731", "E702"]

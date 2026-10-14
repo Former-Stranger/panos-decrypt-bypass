@@ -1,0 +1,10 @@
+# Caddy with its own internal CA: works anywhere, no DNS or ACME needed.
+# Browsers warn until they trust Caddy's root, which you can copy out of the
+# container: docker compose cp caddy:/data/caddy/pki/authorities/local/root.crt .
+# For a public domain, remove the "tls internal" line and Caddy gets a
+# Let's Encrypt certificate automatically.
+
+{$SITE_ADDRESS} {
+	tls internal
+	reverse_proxy scm-decrypt-bypass:8088
+}

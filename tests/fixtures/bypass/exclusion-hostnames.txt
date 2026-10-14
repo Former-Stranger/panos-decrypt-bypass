@@ -1,0 +1,5 @@
+Pinned.Example.com   # pinned cert
+*.mtls.example.com
+pinned.example.com # dup
+
+# comment only

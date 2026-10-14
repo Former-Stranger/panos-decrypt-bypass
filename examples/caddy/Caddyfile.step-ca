@@ -1,0 +1,17 @@
+# Certificates from your own step-ca (or any ACME CA). step-ca certificates
+# are short-lived (24h by default); Caddy renews them automatically.
+#
+# Needs: an ACME provisioner on step-ca, a DNS record for SITE_ADDRESS that
+# step-ca can resolve, port 80 reachable from step-ca (http-01 challenge), and
+# root_ca.pem mounted (see compose.yaml). Rename this file to Caddyfile.
+
+{
+	cert_issuer acme {
+		dir https://ca.example.com:9000/acme/acme/directory
+		trusted_roots /etc/caddy/root_ca.pem
+	}
+}
+
+{$SITE_ADDRESS} {
+	reverse_proxy scm-decrypt-bypass:8088
+}

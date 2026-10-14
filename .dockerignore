@@ -1,0 +1,12 @@
+.git
+.github
+.venv
+.env
+data
+docs
+examples
+tests
+**/__pycache__
+**/.terraform
+**/terraform.tfstate*
+src/scm_decrypt_bypass/terraform/tests

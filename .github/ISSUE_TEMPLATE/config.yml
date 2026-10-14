@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/Former-Stranger/scm-decrypt-bypass/security/advisories/new
+    about: Report security issues privately.
+  - name: Documentation
+    url: https://github.com/Former-Stranger/scm-decrypt-bypass/tree/main/docs
+    about: Setup, configuration and troubleshooting guides.

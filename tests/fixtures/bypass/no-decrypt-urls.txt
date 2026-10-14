@@ -1,0 +1,3 @@
+https://MyBank.com/
+*.mybank.com
+benefits.example-hr.com  # HR portal

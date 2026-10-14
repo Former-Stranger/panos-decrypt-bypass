@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SCM Decrypt Bypass</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header class="top">
+    <div class="brand">
+      <h1>SCM Decrypt Bypass</h1>
+      <span class="sub">TLS decryption failures from the firewall, ready to bypass</span>
+    </div>
+    <div class="top-actions">
+      <div class="status" id="status" aria-live="polite">Loading…</div>
+      <button type="button" class="link" id="logout" hidden>Sign out</button>
+    </div>
+  </header>
+  <p class="setup-hint" id="setupHint" hidden></p>
+
+  <section class="filters" aria-label="Filters">
+    <label>Window
+      <select id="hours">
+        <option value="1">Last hour</option>
+        <option value="24" selected>Last 24 hours</option>
+        <option value="168">Last 7 days</option>
+      </select>
+    </label>
+    <label class="grow">Search
+      <input id="search" type="search" placeholder="host, client or destination IP, user or error">
+    </label>
+    <label class="check"><input id="failuresOnly" type="checkbox" checked> Failures only</label>
+    <label class="check"><input id="hideBypassed" type="checkbox"> Hide already bypassed</label>
+    <button id="pollNow" type="button" class="secondary">Poll now</button>
+    <button id="deployBtn" type="button" class="secondary" title="Plan and deploy pending changes (list edits, terraform.tfvars)">Deploy…</button>
+  </section>
+  <div class="deploy-banner" id="deployBanner" hidden></div>
+
+  <main>
+    <table class="issues" id="issues">
+      <thead>
+        <tr>
+          <th>Last seen</th>
+          <th>Destination</th>
+          <th>Destination IP</th>
+          <th>Problem</th>
+          <th class="num">Hits</th>
+          <th class="num">Clients</th>
+          <th>Decrypt rule</th>
+          <th>Bypass</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+    <p class="empty" id="empty" hidden></p>
+  </main>
+  <footer class="version" id="version"></footer>
+
+  <dialog id="bypassDialog">
+    <form class="dialog" id="bypassForm">
+      <h2>Bypass <span id="dlgTarget"></span></h2>
+      <p class="advice" id="dlgAdvice"></p>
+      <p class="hint">Adds the hostnames to the no-decrypt URL category, then applies it in SCM and pushes to the
+        firewall. The rule is scoped by the zones and source in <code>terraform.tfvars</code>.</p>
+
+      <fieldset>
+        <legend>What to bypass</legend>
+        <label class="option"><input type="radio" name="scope" value="host"> <span>Only <code id="scopeHost"></code></span></label>
+        <label class="option"><input type="radio" name="scope" value="host-subdomains">
+          <span><code class="scope-host"></code> and its subdomains</span></label>
+        <label class="option" id="scopeDomainRow"><input type="radio" name="scope" value="domain">
+          <span>All of <code id="scopeDomain"></code>, including every subdomain</span></label>
+      </fieldset>
+
+      <label><span>Hostnames <span class="hint">(space-separated; edit to add more)</span></span>
+        <input id="dlgEntries" type="text" autocomplete="off" spellcheck="false" required>
+      </label>
+      <p class="hint" id="dlgPreview"></p>
+      <label>Description
+        <input id="dlgDesc" type="text" autocomplete="off" maxlength="200">
+      </label>
+      <p class="form-error" id="dlgError" role="alert" hidden></p>
+
+      <div class="actions">
+        <button type="button" class="secondary" id="dlgClose">Cancel</button>
+        <button type="submit" id="dlgSubmit">Add &amp; deploy</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="deployDialog">
+    <div class="dialog">
+      <h2 id="depTitle">Deploy</h2>
+      <ol class="steps" id="depSteps"></ol>
+      <p class="advice" id="depMessage" hidden></p>
+      <div id="depChanges"></div>
+      <details id="depLogBox">
+        <summary>Log</summary>
+        <pre class="log" id="depLog"></pre>
+      </details>
+      <div class="actions" id="depActions"></div>
+    </div>
+  </dialog>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

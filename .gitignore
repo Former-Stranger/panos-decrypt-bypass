@@ -1,0 +1,18 @@
+# Python
+__pycache__/
+*.py[oc]
+build/
+dist/
+*.egg-info
+.venv
+
+# Local data directory and secrets
+data/
+.env
+
+# Terraform (state lives in the data directory)
+.terraform/
+*.tfstate
+*.tfstate.*
+tfplan*
+crash.log

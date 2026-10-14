@@ -1,0 +1,21 @@
+# Hostnames bypassed by a no-decrypt policy rule (via a custom URL category).
+#
+# Use for sites you CHOOSE not to decrypt (privacy, legal, HR, or just "this
+# vendor asked us not to"). Unlike the exclusion list, these sessions are
+# logged, and you can attach a no-decrypt profile to still validate certs.
+#
+# Only the hostname is visible before decryption (SNI), so paths never match.
+# "https://" and a trailing "/" are stripped for you.
+#
+# Custom URL category matching:
+#   example.com       matches example.com (and paths on it)
+#   *.example.com     matches any subdomain (www.example.com, a.b.example.com)
+#   example.com/      trailing "/" is stripped here; not needed
+# List both example.com and *.example.com to cover a whole domain.
+#
+# Format: one hostname per line, optional "# comment" after it.
+#
+# Examples:
+# mybank.com
+# *.mybank.com
+# benefits.example-hr.com       # HR portal, legal asked us not to inspect

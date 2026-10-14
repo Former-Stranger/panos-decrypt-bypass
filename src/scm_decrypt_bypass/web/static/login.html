@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sign in · SCM Decrypt Bypass</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="login-page">
+  <main class="login-box">
+    <h1>SCM Decrypt Bypass</h1>
+    <p class="sub">Sign in to view decryption failures and manage bypasses.</p>
+    <form id="loginForm">
+      <label>Password
+        <input id="password" type="password" autocomplete="current-password" required autofocus>
+      </label>
+      <p class="form-error" id="loginError" role="alert" hidden></p>
+      <button type="submit" id="loginSubmit">Sign in</button>
+    </form>
+  </main>
+  <script src="/static/login.js"></script>
+</body>
+</html>

@@ -1,0 +1,23 @@
+# SSL Decryption Exclusions (SCM: Security Services > Decryption > Decryption Exclusions)
+#
+# This list is edited by hand: the web GUI and CLI add new bypasses to
+# no-decrypt-urls.txt instead, which is logged and scoped by the rule's zones
+# and source. Entries here apply to EVERY device behind the firewall.
+#
+# Use for sites that BREAK when decrypted: certificate pinning, mutual TLS /
+# client certs, non-standard TLS. These sit alongside the Palo-maintained
+# predefined list; a custom entry with the same hostname overrides a predefined one.
+#
+# Matching is on the TLS SNI or the server certificate CN. Traffic that matches
+# skips decryption policy entirely: it is not logged as a decryption event and
+# no no-decrypt profile checks are applied. For "don't decrypt for privacy or
+# policy reasons" use no-decrypt-urls.txt / no-decrypt-categories.txt instead.
+#
+# Format: one hostname per line, optional "# description" after it.
+# Wildcards: each "*" matches exactly ONE label, so *.example.com matches
+# a.example.com but NOT example.com and NOT a.b.example.com. List each level
+# you need.
+#
+# Examples:
+# pinned-app.example.com        # Mobile app pins its cert
+# *.mtls.example.com            # Partner API needs a client certificate

@@ -1,0 +1,18 @@
+# Destination addresses bypassed by a no-decrypt policy rule.
+#
+# Use for servers you can't identify by hostname (no SNI, IP-only services,
+# appliances) or entire ranges. Each line becomes an SCM address object.
+#
+# Accepted formats:
+#   203.0.113.10                  single IP
+#   203.0.113.0/24                CIDR
+#   203.0.113.10-203.0.113.20     range
+#   2001:db8::/32                 IPv6
+#   api.example.com               FQDN object (resolved by the FIREWALL's DNS,
+#                                 which may differ from the client's; prefer
+#                                 no-decrypt-urls.txt for hostnames)
+#
+# Format: one entry per line, optional "# description" after it.
+#
+# Examples:
+# 203.0.113.0/24                # Payment processor

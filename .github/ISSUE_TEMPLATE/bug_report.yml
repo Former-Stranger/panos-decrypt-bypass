@@ -1,0 +1,42 @@
+name: Bug report
+description: Something doesn't work as documented
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report! **Remove anything sensitive** before posting:
+        hostnames, IPs, tenant (TSG) IDs, API keys, client IDs and log lines from your network.
+        For security issues, use private vulnerability reporting instead (Security tab).
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What you did, what you expected, and what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or error messages
+      description: From the deploy panel's log, `docker logs scm-decrypt-bypass`, or the CLI. Redacted, please.
+      render: text
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Shown at the bottom of the web GUI, or `scm-decrypt-bypass version`.
+    validations:
+      required: true
+  - type: dropdown
+    id: install
+    attributes:
+      label: How are you running it?
+      options: [Docker image, From source (uv), Other]
+    validations:
+      required: true
+  - type: input
+    id: panos
+    attributes:
+      label: PAN-OS version
+      placeholder: e.g. 11.2.4

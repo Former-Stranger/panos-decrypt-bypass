@@ -1,0 +1,12 @@
+# Source addresses bypassed by a no-decrypt policy rule.
+#
+# Use for clients that can't trust the forward-proxy CA: IoT devices, printers,
+# lab boxes, servers doing their own cert validation, guest networks.
+#
+# Same formats as no-decrypt-destinations.txt (IP, CIDR, range, IPv6, FQDN).
+#
+# Format: one entry per line, optional "# description" after it.
+#
+# Examples:
+# 10.20.30.0/24                 # IoT VLAN
+# 10.1.1.50                     # Build server, pins its own CAs

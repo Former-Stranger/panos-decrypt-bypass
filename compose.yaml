@@ -1,0 +1,22 @@
+# scm-decrypt-bypass: copy this file and .env.example (as .env) into a folder,
+# fill in .env, then: docker compose up -d
+# The GUI is then at http://<host>:8088 (put it behind HTTPS; see docs/reverse-proxy.md).
+
+services:
+  scm-decrypt-bypass:
+    image: ghcr.io/former-stranger/scm-decrypt-bypass:${SDB_VERSION:-latest}
+    container_name: scm-decrypt-bypass
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      # The app always listens on 8088 inside the container; WEBGUI_PORT only
+      # picks the host port below.
+      WEBGUI_PORT: "8088"
+    ports:
+      - "${WEBGUI_PORT:-8088}:8088"
+    volumes:
+      # Your settings (terraform.tfvars), bypass lists, Terraform state and the
+      # log database. Back this folder up.
+      - ./data:/data
+      # Optional: a CA bundle to trust the firewall's management certificate.
+      # - ./certs:/certs:ro

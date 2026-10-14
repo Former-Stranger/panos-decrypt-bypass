@@ -1,0 +1,10 @@
+# Users or groups bypassed by a no-decrypt policy rule.
+#
+# Needs User-ID to be working on the firewall. Entries are used as written
+# (case is preserved).
+#
+# Format: one user or group per line, exactly as SCM/User-ID shows it.
+#
+# Examples:
+# example\ceo
+# cn=legal,ou=groups,dc=example,dc=com
