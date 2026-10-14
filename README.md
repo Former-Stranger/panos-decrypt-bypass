@@ -4,8 +4,14 @@
 [![Release](https://img.shields.io/github/v/release/Former-Stranger/scm-decrypt-bypass)](https://github.com/Former-Stranger/scm-decrypt-bypass/releases)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-**Find TLS decryption failures on Palo Alto Networks firewalls, and bypass
-them in one click through Strata Cloud Manager.**
+**Find TLS decryption failures on Palo Alto Networks firewalls managed by
+Strata Cloud Manager, and bypass them in one click.**
+
+> [!IMPORTANT]
+> **Requires firewalls managed by Strata Cloud Manager (SCM).** Bypasses are
+> created and pushed through SCM, so firewalls managed by Panorama or locally
+> aren't supported. The Docker host also needs HTTPS access to the firewall's
+> management interface to read decryption logs.
 
 SSL/TLS decryption breaks some apps: ones that pin their certificates, use
 client certificates, or speak TLS the firewall can't proxy. Finding them
@@ -89,7 +95,7 @@ docker run --rm -p 8088:8088 -e WEBGUI_DEMO=1 -e WEBGUI_AUTH=none ghcr.io/former
   Prisma Access, and firewalls whose logs are only in Strata Logging Service,
   aren't supported yet.
 - Images are published for linux/amd64 and linux/arm64, on
-  `ghcr.io/former-stranger/scm-decrypt-bypass` and `docker.io/akalbfell/scm-decrypt-bypass`.
+  `ghcr.io/former-stranger/scm-decrypt-bypass` and `docker.io/formerstranger/scm-decrypt-bypass`.
 
 ## Security
 

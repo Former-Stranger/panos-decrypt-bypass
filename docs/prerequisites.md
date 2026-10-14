@@ -1,5 +1,8 @@
 # Prerequisites
 
+scm-decrypt-bypass only works with firewalls **managed by Strata Cloud
+Manager**. Firewalls managed by Panorama or locally aren't supported.
+
 You need three things before installing: an SCM service account, an XML API
 key for the firewall, and decryption logging on your decrypt rules. You also
 need a Docker host that can reach both SCM and the firewall's management

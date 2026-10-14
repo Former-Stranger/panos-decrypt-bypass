@@ -42,7 +42,7 @@ Then put it behind HTTPS: see the [reverse proxy guide](reverse-proxy.md).
 | Registry | Image |
 |---|---|
 | GitHub Container Registry | `ghcr.io/former-stranger/scm-decrypt-bypass` |
-| Docker Hub | `docker.io/akalbfell/scm-decrypt-bypass` |
+| Docker Hub | `docker.io/formerstranger/scm-decrypt-bypass` |
 
 Tags: `latest`, the exact version (`0.1.0`), and the minor line (`0.1`). Set
 `SDB_VERSION` in `.env` to pin a version. Images are built for linux/amd64 and
