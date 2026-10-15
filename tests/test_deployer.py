@@ -1,7 +1,7 @@
 """Tests for one-click deploys: `uv run --extra web python -m unittest discover tests`.
 
-A fake `terraform` on PATH stands in for the real one, and the SCM push is
-patched out, so nothing here talks to SCM.
+A fake `terraform` on PATH stands in for the real one, and the SCM push and
+firewall commit are patched out, so nothing here talks to SCM or a firewall.
 """
 
 import json
@@ -13,7 +13,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from panos_decrypt_bypass import bypass_lists, scm_api
+from panos_decrypt_bypass import bypass_lists, panos_commit, scm_api
 from panos_decrypt_bypass.web.deployer import Busy, DemoDeployer, Deployer, summarize_plan
 from panos_decrypt_bypass.workspace import PATHS_FILE, Workspace
 
@@ -67,6 +67,35 @@ EXCLUSION_DELETE = {
 UNCHANGED = {"address": "scm_tag.bypass", "change": {"actions": ["no-op"], "before": {}, "after": {}}}
 
 
+def panos_rule(name, **kw):
+    return {"name": name, "action": "no-decrypt", "category": ["any"], "profile": None, "uuid": f"uuid-{name}"} | kw
+
+
+def panos_rules(actions, before, after):
+    position = {"where": "first", "pivot": None, "directly": None}
+    return {
+        "address": "panos_decryption_policy_rules.no_decrypt[0]",
+        "change": {
+            "actions": actions,
+            "before": {"position": position, "rules": before} if before is not None else None,
+            "after": {"position": position, "rules": [{k: v for k, v in r.items() if k != "uuid"} for r in after]},
+            "after_unknown": {},
+        },
+    }
+
+
+PANOS_URL_UPDATE = {
+    "address": "panos_custom_url_category.no_decrypt[0]",
+    "change": {
+        "actions": ["update"],
+        "before": {"name": "tf-ssl-bypass-urls", "list": ["a.com"]},
+        "after": {"name": "tf-ssl-bypass-urls", "list": ["a.com", "new.example"]},
+        "after_unknown": {},
+    },
+}
+DST, URLS = panos_rule("tf-ssl-bypass-destinations"), panos_rule("tf-ssl-bypass-urls", category=["tf-ssl-bypass-urls"])
+
+
 class DescriptionTest(unittest.TestCase):
     def test_clean_description(self):
         # The exact description SCM rejected, from a real push.
@@ -94,6 +123,30 @@ class SummarizePlanTest(unittest.TestCase):
 
     def test_no_changes_is_not_auto(self):
         self.assertEqual(summarize_plan({"resource_changes": [UNCHANGED]}), ([], False))
+
+
+class SummarizePanosPlanTest(unittest.TestCase):
+    def test_url_list_update_is_auto(self):
+        changes, auto = summarize_plan({"resource_changes": [PANOS_URL_UPDATE]})
+        self.assertTrue(auto)
+        self.assertEqual(changes[0]["detail"], ["list: +new.example"])
+
+    def test_first_url_rule_is_auto(self):
+        self.assertTrue(summarize_plan({"resource_changes": [PANOS_URL_UPDATE, panos_rules(["create"], None, [URLS])]})[1])
+        changes, auto = summarize_plan({"resource_changes": [panos_rules(["update"], [DST], [DST, URLS])]})
+        self.assertTrue(auto)
+        self.assertEqual(changes[0]["detail"], ["+ rule tf-ssl-bypass-urls"])
+
+    def test_other_rule_changes_need_review(self):
+        changed_dst = panos_rule("tf-ssl-bypass-destinations", profile="Corp")
+        changes, auto = summarize_plan({"resource_changes": [panos_rules(["update"], [DST], [changed_dst, URLS])]})
+        self.assertFalse(auto)
+        self.assertEqual(changes[0]["detail"], ["+ rule tf-ssl-bypass-urls", "rule tf-ssl-bypass-destinations: profile: (none) → Corp"])
+        self.assertFalse(summarize_plan({"resource_changes": [panos_rules(["update"], [DST, URLS], [DST])]})[1])
+        self.assertFalse(summarize_plan({"resource_changes": [panos_rules(["create"], None, [DST, URLS])]})[1])
+        moved = panos_rules(["update"], [DST], [DST, URLS])
+        moved["change"]["after"]["position"] = {"where": "last", "pivot": None, "directly": None}
+        self.assertFalse(summarize_plan({"resource_changes": [moved]})[1])
 
 
 class DeployerTest(unittest.TestCase):
@@ -246,6 +299,77 @@ class DeployerTest(unittest.TestCase):
         self.assertIn("Set folder (or snippet)", job.error)
         self.assertFalse(self.calls.exists())
         self.assertEqual(self.urls(), ["a.com"])
+
+
+class LocalDeployerTest(DeployerTest):
+    """The same deploy flow against a locally managed firewall: commit, not push."""
+
+    def setUp(self):
+        super().setUp()
+        (self.work / "terraform.tfvars").write_text('vsys = "vsys1"\n')
+        self.commits = []
+        self.commit = mock.patch.object(
+            panos_commit, "commit_and_wait", side_effect=lambda desc, **kw: self.commits.append((desc, kw["expect_changes"]))
+        )
+        self.commit.start()
+        self.deployer = Deployer(Workspace(self.work, "local"))
+
+    def tearDown(self):
+        self.commit.stop()
+        super().tearDown()
+
+    def test_bypass_applies_and_commits_without_review(self):
+        self.plan(PANOS_URL_UPDATE)
+        self.deployer.start("bypass", self.add("new.example"))
+        self.assertEqual(self.wait("done", "failed", "review").state, "done")
+        self.assertEqual(self.commits, [("panos-decrypt-bypass: bypass new.example", True)])
+        self.assertEqual(self.pushes, [])
+        self.assertNotIn("output", self.calls.read_text())
+
+    def test_nothing_to_apply_can_still_commit(self):
+        os.environ["FAKE_TF_PLAN"] = ""
+        job = self.deployer.start("manual")
+        self.assertEqual(self.wait("nochange", "failed").state, "nochange")
+        self.deployer.retry_push(job.id)
+        self.assertEqual(self.wait("done", "failed").state, "done")
+        self.assertEqual(self.commits, [("panos-decrypt-bypass: deploy", False)])
+
+    def test_prepares_working_directory_and_inits_first(self):
+        os.environ["FAKE_TF_PLAN"] = ""
+        self.deployer.start("manual")
+        self.wait("nochange", "failed")
+        tf = self.work / "terraform"
+        self.assertIn("PaloAltoNetworks/panos", (tf / "versions.tf").read_text())
+        self.assertFalse((tf / "modules").exists())
+
+    # Covered by the SCM-specific versions above.
+    test_bypass_applies_and_pushes_without_review = None
+    test_push_description_names_domains_once = None
+    test_nothing_to_apply_can_still_push = None
+    test_failed_push_can_be_retried = None
+    test_unconfigured_install_fails_before_terraform = None
+
+    def test_unexpected_changes_wait_for_review_then_confirm(self):
+        self.plan(PANOS_URL_UPDATE, panos_rules(["update"], [DST], [panos_rule("tf-ssl-bypass-destinations", profile="X")]))
+        self.deployer.start("bypass", self.add("new.example"))
+        job = self.wait("review", "done", "failed")
+        self.assertEqual(job.state, "review")
+        self.deployer.confirm(job.id)
+        self.assertEqual(self.wait("done", "failed").state, "done")
+        self.assertEqual(len(self.commits), 1)
+
+    def test_cancel_takes_new_entries_back_out(self):
+        self.plan(PANOS_URL_UPDATE, panos_rules(["update"], [DST], [panos_rule("tf-ssl-bypass-destinations", profile="X")]))
+        self.deployer.start("bypass", self.add("new.example"))
+        job = self.wait("review")
+        self.deployer.cancel(job.id)
+        self.assertEqual(self.urls(), ["a.com"])
+        self.assertEqual(self.commits, [])
+
+    def test_manual_deploy_always_reviews(self):
+        self.plan(PANOS_URL_UPDATE)
+        self.deployer.start("manual")
+        self.assertEqual(self.wait("review", "done").state, "review")
 
 
 class DemoDeployerTest(unittest.TestCase):

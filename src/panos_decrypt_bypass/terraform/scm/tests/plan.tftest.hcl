@@ -1,13 +1,13 @@
 # Offline plan against a mocked SCM provider. From the repo root:
-#   terraform -chdir=src/panos_decrypt_bypass/terraform init -backend=false
-#   terraform -chdir=src/panos_decrypt_bypass/terraform test
+#   terraform -chdir=src/panos_decrypt_bypass/terraform/scm init -backend=false
+#   terraform -chdir=src/panos_decrypt_bypass/terraform/scm test
 # Uses the lists in tests/fixtures instead of a data directory.
 
 mock_provider "scm" {}
 
 variables {
   folder     = "ngfw-shared"
-  bypass_dir = "../../../tests/fixtures/bypass"
+  bypass_dir = "../../../../tests/fixtures/bypass"
 }
 
 run "parses_lists_and_builds_objects" {
@@ -64,7 +64,7 @@ run "skips_empty_rules_and_rechains" {
   command = plan
 
   variables {
-    bypass_dir = "../../../tests/fixtures/empty"
+    bypass_dir = "../../../../tests/fixtures/empty"
   }
 
   assert {
@@ -77,7 +77,7 @@ run "edls_feed_rules" {
   command = plan
 
   variables {
-    bypass_dir                = "../../../tests/fixtures/empty"
+    bypass_dir                = "../../../../tests/fixtures/empty"
     create_no_decrypt_profile = true
     edls = {
       tf-edl-urls = { type = "url", source_url = "https://example.com/urls.txt" }

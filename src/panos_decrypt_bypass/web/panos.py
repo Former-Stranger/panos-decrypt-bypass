@@ -1,7 +1,8 @@
-"""PAN-OS XML API client for decryption logs.
+"""PAN-OS XML API client: decryption logs, and commits for MANAGEMENT=local.
 
 Log retrieval is a two-step job: type=log creates a query job, then
 action=get polls it until status is FIN and returns <entry> elements.
+Commits work the same way: type=commit returns a job id to poll.
 """
 
 import ssl
@@ -118,6 +119,31 @@ class Firewall:
             raise PanosError(f"Firewall API error: {msg or body[:300]}")
         root.set("_body", body)
         return root
+
+    def commit(self, description: str, admins: list[str] | None = None) -> str | None:
+        """Start a commit, limited to the given admins' changes when set.
+        Returns the job id, or None if there was nothing to commit."""
+        cmd = ET.Element("commit")
+        ET.SubElement(cmd, "description").text = description[:512]
+        params = {"type": "commit"}
+        if admins:
+            partial = ET.SubElement(ET.SubElement(cmd, "partial"), "admin")
+            for admin in admins:
+                ET.SubElement(partial, "member").text = admin
+            params["action"] = "partial"
+        params["cmd"] = ET.tostring(cmd, encoding="unicode")
+        root = self._call(params)
+        job = root.findtext(".//job")
+        return job.strip() if job else None
+
+    def job(self, job_id: str) -> ET.Element:
+        """The <job> element of `show jobs id <job_id>`."""
+        cmd = ET.Element("show")
+        ET.SubElement(ET.SubElement(cmd, "jobs"), "id").text = job_id
+        job = self._call({"type": "op", "cmd": ET.tostring(cmd, encoding="unicode")}).find(".//job")
+        if job is None:
+            raise PanosError(f"Firewall did not return job {job_id}.")
+        return job
 
     def query_decryption_logs(self, query: str, nlogs: int = 1000, job_timeout: int = 120) -> list[LogEntry]:
         """Run a decryption log query, oldest first, and return the entries."""

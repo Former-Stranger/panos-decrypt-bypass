@@ -1,17 +1,22 @@
 # Prerequisites
 
-panos-decrypt-bypass only works with firewalls **managed by Strata Cloud
-Manager**. Firewalls managed by Panorama or locally aren't supported.
+First decide how the app changes your config. That depends on what manages
+the firewall:
 
-You need three things before installing: an SCM service account, an XML API
-key for the firewall, and decryption logging on your decrypt rules. You also
-need a Docker host that can reach both SCM and the firewall's management
-interface.
+| The firewall is managed by | Set | Bypasses are |
+|---|---|---|
+| Strata Cloud Manager | `MANAGEMENT=scm` (default) | created in SCM and pushed |
+| Nothing else: you configure it locally | `MANAGEMENT=local` | created on the firewall and committed |
+| Panorama | | not supported |
 
-## 1. Strata Cloud Manager service account
+You need an XML API key for the firewall and decryption logging on your
+decrypt rules. With SCM you also need a service account. The Docker host must
+reach the firewall's management interface (and SCM, if you use it).
 
-The app (and Terraform) use a service account to create the bypass objects and
-push them.
+## 1. Strata Cloud Manager service account (SCM only)
+
+Skip this with `MANAGEMENT=local`. The app (and Terraform) use a service
+account to create the bypass objects and push them.
 
 1. In Strata Cloud Manager, go to **Settings → Identity & Access** and add an
    identity of type **Service Account**.
@@ -38,12 +43,22 @@ other admins' unfinished edits never go out with a bypass.
 ## 2. Firewall XML API key
 
 The decryption log viewer reads logs straight from the firewall's management
-interface through the PAN-OS XML API.
+interface through the PAN-OS XML API. With `MANAGEMENT=local` the same key
+also creates the bypass objects and commits them.
 
-1. Create an **admin role profile** whose only permission is **XML API → Log**
-   (turn off Web UI and the REST API). Configure it in SCM's device settings
-   for the firewall, or locally on the firewall.
-2. Create an administrator that uses that role.
+1. Create an **admin role profile** with only the XML API permissions you
+   need, and turn off the Web UI and the REST API:
+
+   | Mode | XML API permissions |
+   |---|---|
+   | `scm` | **Log** |
+   | `local` | **Log**, **Configuration**, **Operational Requests**, **Commit** |
+
+   With SCM, configure the role in SCM's device settings for the firewall (or
+   locally). With `local`, configure it on the firewall.
+2. Create an administrator that uses that role. With `local`, put its name in
+   `FIREWALL_USERNAME`: commits include only this admin's changes, so other
+   admins' unfinished edits never go live with a bypass.
 3. Generate an API key for it. This prompts for the password so it isn't
    echoed or saved in your shell history (add `--cacert <ca.pem>` if the
    management certificate is from a private CA):
@@ -56,7 +71,9 @@ interface through the PAN-OS XML API.
 
 4. Copy the value between `<key>` and `</key>` into `FIREWALL_API_KEY` in `.env`.
 
-The key stops working if that admin's password changes.
+The key stops working if that admin's password changes. With `local`, treat
+the key like an admin password: it can change and commit the firewall's
+config.
 
 ## 3. Decryption logging
 
@@ -74,9 +91,9 @@ The logs are read from the firewall itself, so no log forwarding is needed.
 
 | From the Docker host to | Port | Used for |
 |---|---|---|
-| Firewall management interface | 443 | Reading decryption logs |
-| `auth.apps.paloaltonetworks.com` | 443 | SCM authentication |
-| `api.sase.paloaltonetworks.com` | 443 | SCM configuration and push |
+| Firewall management interface | 443 | Reading decryption logs; with `local`, config and commits |
+| `auth.apps.paloaltonetworks.com` | 443 | SCM authentication (SCM only) |
+| `api.sase.paloaltonetworks.com` | 443 | SCM configuration and push (SCM only) |
 
 **If the Docker host's own traffic is decrypted by the firewall**, the
 container won't trust the forward-proxy certificate, and SCM calls fail with
@@ -88,4 +105,9 @@ Docker host at least) before you start.
 The app verifies the firewall's management certificate. If it's issued by a
 private CA, mount that CA's certificate into the container and set
 `FIREWALL_CA_FILE` (see [Configuration](configuration.md)). The name in
-`FIREWALL_HOST` must match the certificate.
+`FIREWALL_HOST` must match the certificate. With `local`, Terraform trusts the
+same CA.
+
+A factory-default firewall uses a self-signed management certificate. Replace
+it with one from your CA, or as a last resort, export the self-signed
+certificate and use it as `FIREWALL_CA_FILE`.

@@ -21,8 +21,8 @@ What the app protects, and how:
 | **Cross-site requests** | Every request that changes something needs a custom header and a same-origin `Origin`, which another website can't send. Pages are served with a strict Content-Security-Policy, `X-Frame-Options: DENY` and `nosniff`. |
 | **Hostile log content** | SNI, certificate names and error strings in decryption logs are controlled by whoever is on either end of the connection. The page only inserts them as text, never as HTML. Hostnames are validated before they reach a bypass list or Terraform. |
 | **Scope of a bypass** | One-click bypasses only add hostnames to the no-decrypt URL category, whose rule is scoped by the zones and source addresses you configure. A deploy applies without review only if the plan changes nothing but that list. |
-| **Credentials** | SCM and firewall credentials are read from the environment (`.env`), never stored by the app or written to logs. TLS to the firewall is verified by default. |
-| **Container** | The app runs as an unprivileged user (`PUID`/`PGID`). Terraform is checksum-verified at build time, and the SCM provider is pre-installed, so no providers are downloaded at runtime. Release images carry provenance attestations and an SBOM. |
+| **Credentials** | SCM and firewall credentials are read from the environment (`.env`), never stored by the app or written to logs. TLS to the firewall is verified by default, by the app and by Terraform. With `MANAGEMENT=local`, the firewall API key can change and commit config, so protect it like an admin password. |
+| **Container** | The app runs as an unprivileged user (`PUID`/`PGID`). Terraform is checksum-verified at build time, and the SCM and PAN-OS providers are pre-installed, so no providers are downloaded at runtime. Release images carry provenance attestations and an SBOM. |
 
 ## Recommended deployment
 

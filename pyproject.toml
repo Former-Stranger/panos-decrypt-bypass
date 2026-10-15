@@ -1,13 +1,13 @@
 [project]
 name = "panos-decrypt-bypass"
-version = "0.1.0"
-description = "Find TLS decryption failures on Palo Alto Networks firewalls and bypass them through Strata Cloud Manager with Terraform"
+version = "0.2.0"
+description = "Find TLS decryption failures on Palo Alto Networks firewalls and bypass them with Terraform, through Strata Cloud Manager or on the firewall itself"
 readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE"]
 authors = [{ name = "Former-Stranger" }]
 requires-python = ">=3.12"
-keywords = ["palo-alto-networks", "strata-cloud-manager", "ssl-decryption", "tls", "terraform", "firewall"]
+keywords = ["palo-alto-networks", "pan-os", "strata-cloud-manager", "ssl-decryption", "tls", "terraform", "firewall"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Environment :: Web Environment",
@@ -43,7 +43,7 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/panos_decrypt_bypass"]
-exclude = ["src/panos_decrypt_bypass/terraform/tests", "src/panos_decrypt_bypass/terraform/.terraform"]
+exclude = ["src/panos_decrypt_bypass/terraform/*/tests", "src/panos_decrypt_bypass/terraform/*/.terraform"]
 
 [tool.hatch.build.targets.sdist]
 include = ["src", "tests", "docs", "examples", "README.md", "LICENSE", "CHANGELOG.md"]

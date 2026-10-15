@@ -1,27 +1,23 @@
-# panos-decrypt-bypass settings. Lives in your data directory (DATA_DIR,
-# /data in the container); edit it, then use Deploy… in the web GUI or
-# `panos-decrypt-bypass deploy`. Every setting is described in variables.tf
-# and in docs/configuration.md.
+# panos-decrypt-bypass settings for a locally managed firewall (MANAGEMENT=local).
+# Lives in your data directory (DATA_DIR, /data in the container); edit it,
+# then use Deploy… in the web GUI or `panos-decrypt-bypass deploy`. Every
+# setting is described in docs/configuration.md.
 
-# --- Where the config lives in Strata Cloud Manager (required) ---------------
-# Set exactly one of folder or snippet. Use the folder name as SCM shows it;
-# the built-in "All Firewalls" folder is "ngfw-shared" in the API.
-# folder = "ngfw-shared"
-
-# Or put everything in a snippet, and list the folders to push:
-# snippet      = "ssl-bypass"
-# push_folders = ["Branch Firewalls"]
+# --- Where the config lives on the firewall ------------------------------------
+# Virtual system for the bypass objects and rules. Single-vsys firewalls use
+# vsys1 (the default).
+# vsys = "vsys1"
 
 # --- What the no-decrypt rules match -------------------------------------------
 # Zones, source addresses and services for every no-decrypt rule. "any" is the
 # safe default for no-decrypt; narrow them to limit who gets bypassed.
 # from_zones       = ["trust"]
 # to_zones         = ["untrust"]
-# source_addresses = ["my-laptop"]   # existing SCM address objects or groups
+# source_addresses = ["my-laptop"]   # existing address objects or groups
 # services         = ["any"]
 
-# Rules go to the top of the decryption pre-rulebase by default. To slot them
-# under an existing rule instead:
+# The rules go to the top of the decryption rulebase by default, as one block.
+# To slot them under an existing rule instead:
 # rule_placement = { relative_position = "after", target_rule = "My-Existing-Rule" }
 
 # --- Decryption profile ------------------------------------------------------

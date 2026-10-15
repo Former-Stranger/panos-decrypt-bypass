@@ -3,13 +3,13 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>SCM Decrypt Bypass</title>
+  <title>PAN-OS Decrypt Bypass</title>
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
   <header class="top">
     <div class="brand">
-      <h1>SCM Decrypt Bypass</h1>
+      <h1>PAN-OS Decrypt Bypass</h1>
       <span class="sub">TLS decryption failures from the firewall, ready to bypass</span>
     </div>
     <div class="top-actions">
@@ -61,8 +61,8 @@
     <form class="dialog" id="bypassForm">
       <h2>Bypass <span id="dlgTarget"></span></h2>
       <p class="advice" id="dlgAdvice"></p>
-      <p class="hint">Adds the hostnames to the no-decrypt URL category, then applies it in SCM and pushes to the
-        firewall. The rule is scoped by the zones and source in <code>terraform.tfvars</code>.</p>
+      <p class="hint"><span id="dlgHow">Adds the hostnames to the no-decrypt URL category, then applies it and
+        updates the firewall.</span> The rule is scoped by the zones and source in <code>terraform.tfvars</code>.</p>
 
       <fieldset>
         <legend>What to bypass</legend>

@@ -5,7 +5,7 @@ There are three places to configure panos-decrypt-bypass:
 | Where | What |
 |---|---|
 | [`.env`](#environment-variables) | Credentials, the login, log polling and container settings |
-| [`data/terraform.tfvars`](#terraformtfvars) | Where the config lives in SCM, and what the no-decrypt rules match |
+| [`data/terraform.tfvars`](#terraformtfvars) | Where the config lives (SCM folder or vsys), and what the no-decrypt rules match |
 | [`data/bypass/*.txt`](#bypass-lists) | What's bypassed. Usually edited through the GUI or CLI. |
 
 ## Environment variables
@@ -25,7 +25,18 @@ container after changing them: `docker compose up -d`.
 | `WEBGUI_HOST` | `127.0.0.1` | Address `serve` listens on when run from source (the image uses `0.0.0.0`). |
 | `WEBGUI_DEMO` | `false` | Sample logs and simulated deploys. Nothing is sent to SCM or a firewall. |
 
-### Strata Cloud Manager
+### Management
+
+| Variable | Default | |
+|---|---|---|
+| `MANAGEMENT` | `scm` | `scm` for a firewall managed by Strata Cloud Manager; `local` for a firewall configured on its own (not by SCM or Panorama). See [prerequisites](prerequisites.md). |
+
+Keep one mode per data directory. The app refuses to run one mode against
+Terraform state the other mode created, because Terraform would plan to delete
+everything. To manage both kinds of firewall, run two containers with separate
+data directories.
+
+### Strata Cloud Manager (`MANAGEMENT=scm`)
 
 | Variable | Default | |
 |---|---|---|
@@ -41,8 +52,9 @@ container after changing them: `docker compose up -d`.
 |---|---|---|
 | `FIREWALL_HOST` | (required) | Management address. Must match a name in its certificate. |
 | `FIREWALL_API_KEY` | (required) | XML API key ([how to create one](prerequisites.md#2-firewall-xml-api-key)). |
+| `FIREWALL_USERNAME` | (`local`: required) | The admin that owns `FIREWALL_API_KEY`. Commits include only this admin's changes. |
 | `FIREWALL_TIMEZONE` | `UTC` | The timezone the firewall writes log timestamps in, e.g. `Europe/Berlin`. If it's wrong, "last seen" times are off. |
-| `FIREWALL_CA_FILE` | (none) | CA certificate (path inside the container) that issued the management certificate, for a private CA. |
+| `FIREWALL_CA_FILE` | (none) | CA certificate (path inside the container) that issued the management certificate, for a private CA. With `local`, Terraform trusts it too. |
 | `FIREWALL_VERIFY_TLS` | `true` | Set `false` to skip certificate checks. Avoid it; use `FIREWALL_CA_FILE`. |
 | `POLL_SECONDS` | `300` | How often to pull new logs. **Poll now** in the GUI fetches immediately. |
 | `INITIAL_LOOKBACK_HOURS` | `24` | How far back the first poll reaches. |
@@ -60,11 +72,11 @@ container after changing them: `docker compose up -d`.
 ## terraform.tfvars
 
 `data/terraform.tfvars` holds your settings for the Terraform module. It's
-created from a commented template on first start. Changes take effect on the
-next deploy: use **Deploy…** in the GUI, which shows the plan for review, or
-`panos-decrypt-bypass deploy`.
+created on first start from a commented template for your `MANAGEMENT` mode.
+Changes take effect on the next deploy: use **Deploy…** in the GUI, which
+shows the plan for review, or `panos-decrypt-bypass deploy`.
 
-### Where the config lives
+### Where the config lives: SCM
 
 | Setting | Default | |
 |---|---|---|
@@ -77,6 +89,13 @@ Rules in parent folders are evaluated first. If a decrypt rule in a parent
 folder matches the traffic you want to bypass, it wins over these no-decrypt
 rules, so the bypass config has to live in that parent folder or above.
 
+### Where the config lives: locally managed firewall
+
+| Setting | Default | |
+|---|---|---|
+| `vsys` | `vsys1` | Virtual system for the objects and rules. |
+| `name_prefix` | `tf-ssl-bypass` | Prefix for everything created: rules, URL category, address objects, tag. |
+
 ### What the no-decrypt rules match
 
 | Setting | Default | |
@@ -84,7 +103,7 @@ rules, so the bypass config has to live in that parent folder or above.
 | `from_zones` / `to_zones` | `["any"]` | Source and destination zones. |
 | `source_addresses` | `["any"]` | Names of existing address objects or groups. The rule for `no-decrypt-sources.txt` uses its own list instead. |
 | `services` | `["any"]` | `any` also catches TLS on ports other than 443. |
-| `rule_placement` | top | Where the first rule goes, e.g. `{ relative_position = "after", target_rule = "My-Rule" }`. The others follow it in order. |
+| `rule_placement` | top | Where the first rule goes, e.g. `{ relative_position = "after", target_rule = "My-Rule" }`. The others follow it in order. With `local` the rules are kept together as one block in that position, and moving them by hand shows up as a change on the next deploy. |
 | `log_success` / `log_fail` | `true` | Log sessions the rules match. Undecrypted traffic is only logged when a decryption rule matches it. |
 | `log_setting` | (none) | Log forwarding profile. |
 
@@ -111,7 +130,7 @@ itself, without a push.
 
 `data/bypass/` holds one file per kind of bypass. The GUI and CLI edit them for
 you. By hand: one entry per line, `#` starts a comment, and a comment after an
-entry becomes that object's description in SCM.
+entry becomes that object's description.
 
 | File | Becomes | Use for |
 |---|---|---|
@@ -120,7 +139,7 @@ entry becomes that object's description in SCM.
 | `no-decrypt-destinations.txt` | Address objects and a no-decrypt rule | Servers without a hostname (no SNI), whole ranges |
 | `no-decrypt-sources.txt` | Address objects and a no-decrypt rule | Clients that can't trust your forward-trust CA: IoT, printers, guest networks |
 | `no-decrypt-users.txt` | A no-decrypt rule matching users or groups | People or teams (needs User-ID) |
-| `exclusion-hostnames.txt` | Custom decryption exclusions | Edited by hand only. Applies to every device, regardless of zones or source. |
+| `exclusion-hostnames.txt` | Custom decryption exclusions (SCM only) | Edited by hand only. Applies to every device, regardless of zones or source. Ignored with `local`, with a warning: exclusions live next to the forward-trust certificates in the firewall's SSL decryption settings, and the app doesn't touch those. Use `no-decrypt-urls.txt` instead. |
 
 Each file's header explains its format. An empty list creates nothing, and the
 rule for a list is removed when the list is emptied. Wildcard rules differ

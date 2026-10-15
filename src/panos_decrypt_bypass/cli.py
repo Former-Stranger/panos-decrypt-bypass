@@ -1,23 +1,25 @@
-"""panos-decrypt-bypass: manage SSL decryption bypasses in Strata Cloud Manager.
+"""panos-decrypt-bypass: manage SSL decryption bypasses on Palo Alto Networks
+firewalls, through Strata Cloud Manager or directly on a locally managed firewall.
 
     panos-decrypt-bypass                         # interactive menu
     panos-decrypt-bypass add url mybank.com --subdomains -d "Online banking"
     panos-decrypt-bypass remove url mybank.com
     panos-decrypt-bypass list
-    panos-decrypt-bypass plan                    # show what would change in SCM
-    panos-decrypt-bypass deploy                  # plan, confirm, apply, push to firewalls
-    panos-decrypt-bypass push                    # push the candidate config without applying
+    panos-decrypt-bypass plan                    # show what would change
+    panos-decrypt-bypass deploy                  # plan, confirm, apply, push/commit
+    panos-decrypt-bypass push                    # push/commit without applying (alias: commit)
     panos-decrypt-bypass serve                   # run the web GUI
     panos-decrypt-bypass init                    # create the data directory
 
-add/remove/list only edit the bypass lists; nothing reaches SCM until you
-deploy. Kinds you can add: url, category, destination, source, user.
+add/remove/list only edit the bypass lists; nothing reaches the firewall
+until you deploy. Kinds you can add: url, category, destination, source, user.
 Decryption exclusions are edited by hand, and can be listed and removed here.
 
 Your settings, bypass lists and Terraform state live in DATA_DIR (/data in
-the container, ./data otherwise). Credentials come from the environment or a
-.env file in the current directory: SCM_CLIENT_ID, SCM_CLIENT_SECRET,
-SCM_SCOPE (tsg_id:<id>), and optionally SCM_HOST and SCM_AUTH_URL.
+the container, ./data otherwise). Settings come from the environment or a
+.env file in the current directory. MANAGEMENT=scm (the default) needs
+SCM_CLIENT_ID, SCM_CLIENT_SECRET and SCM_SCOPE; MANAGEMENT=local needs
+FIREWALL_HOST, FIREWALL_API_KEY and FIREWALL_USERNAME. See .env.example.
 """
 
 import argparse
@@ -29,12 +31,14 @@ import subprocess
 import sys
 from pathlib import Path
 
-from panos_decrypt_bypass import __version__, bypass_lists, scm_api
+from panos_decrypt_bypass import __version__, bypass_lists, panos_commit, scm_api
 from panos_decrypt_bypass.bypass_lists import KINDS
-from panos_decrypt_bypass.workspace import Workspace, terraform_env
+from panos_decrypt_bypass.web.panos import PanosError
+from panos_decrypt_bypass.workspace import Workspace, WorkspaceError
 
 PLAN_FILE = "tfplan"
 ADDABLE = [k for k in KINDS if k != "exclusion"]
+# Set again in main(), once .env is loaded.
 WS = Workspace.from_env()
 BYPASS_DIR = WS.bypass_dir
 
@@ -63,13 +67,14 @@ def drop_root() -> None:
 
 
 def preflight() -> None:
-    """Checks needed before anything talks to Terraform or SCM."""
+    """Checks needed before anything talks to Terraform, SCM or the firewall."""
     if not shutil.which("terraform"):
         sys.exit("terraform not found on PATH.")
-    missing = [k for k in scm_api.REQUIRED_ENV if not os.environ.get(k)]
+    required = panos_commit.REQUIRED_ENV if WS.mode.name == "local" else scm_api.REQUIRED_ENV
+    missing = [k for k in required if not os.environ.get(k, "").strip()]
     if missing:
         sys.exit(f"Missing {', '.join(missing)}. Set them in the environment or in .env (see .env.example).")
-    if not WS.has_location():
+    if not WS.configured():
         sys.exit(f"Set folder (or snippet) in {WS.tfvars} first.")
 
 
@@ -80,7 +85,7 @@ def terraform(*args: str, check: bool = True, capture: bool = False) -> subproce
     return subprocess.run(
         ["terraform", *args],
         cwd=WS.tf_dir,
-        env=terraform_env(),
+        env=WS.terraform_env(),
         check=check,
         text=True,
         stdout=subprocess.PIPE if capture else None,
@@ -88,7 +93,10 @@ def terraform(*args: str, check: bool = True, capture: bool = False) -> subproce
 
 
 def terraform_init() -> None:
-    WS.prepare_terraform()
+    try:
+        WS.prepare_terraform()
+    except WorkspaceError as e:
+        sys.exit(str(e))
     result = terraform("init", "-input=false", check=False, capture=True)
     if result.returncode:
         print(result.stdout)
@@ -114,10 +122,14 @@ def push_folders() -> list[str]:
 # --- Commands ----------------------------------------------------------------
 
 
-def do_push(args: argparse.Namespace) -> None:
+def do_publish(args: argparse.Namespace, applied: bool = False) -> None:
+    """Push (SCM) or commit (local firewall) the candidate config."""
     try:
-        scm_api.push_and_wait(push_folders(), args.description, args.all_admins, args.timeout)
-    except scm_api.ScmError as e:
+        if WS.mode.name == "local":
+            panos_commit.commit_and_wait(args.description, args.all_admins, args.timeout, expect_changes=applied)
+        else:
+            scm_api.push_and_wait(push_folders(), args.description, args.all_admins, args.timeout)
+    except (scm_api.ScmError, PanosError) as e:
         sys.exit(str(e))
 
 
@@ -133,25 +145,28 @@ def cmd_deploy(args: argparse.Namespace) -> None:
     try:
         changed = terraform_plan()
         if changed:
-            if not args.auto_approve and input("\nApply these changes to SCM and push? [y/N] ").strip().lower() != "y":
+            prompt = f"\nApply these changes to {WS.mode.target} and {WS.mode.publish}? [y/N] "
+            if not args.auto_approve and input(prompt).strip().lower() != "y":
                 sys.exit("Cancelled.")
             terraform("apply", "-input=false", PLAN_FILE)
     finally:
         (WS.tf_dir / PLAN_FILE).unlink(missing_ok=True)
 
+    publish = WS.mode.publish
     if not changed and not args.force_push:
-        print("No changes to apply, nothing to push. Use --force-push to push anyway.")
+        print(f"No changes to apply, nothing to {publish}. Use --force-push to {publish} anyway.")
         return
     if args.no_push:
-        print("Skipping push (--no-push). Run `panos-decrypt-bypass push` when ready.")
+        print(f"Skipping the {publish} (--no-push). Run `panos-decrypt-bypass {publish}` when ready.")
         return
-    do_push(args)
+    do_publish(args, applied=changed)
 
 
 def cmd_push(args: argparse.Namespace) -> None:
     preflight()
-    terraform_init()
-    do_push(args)
+    if WS.mode.name == "scm":
+        terraform_init()  # push folders come from terraform output
+    do_publish(args)
 
 
 def cmd_init(args: argparse.Namespace) -> None:
@@ -159,7 +174,7 @@ def cmd_init(args: argparse.Namespace) -> None:
     for path in created:
         print(f"  created {path}")
     print(f"Data directory: {WS.data_dir}")
-    if not WS.has_location():
+    if not WS.configured():
         print(f"Next: set folder (or snippet) in {WS.tfvars}.")
 
 
@@ -373,8 +388,8 @@ def interactive() -> None:
                     ("add", "Add a bypass"),
                     ("remove", "Remove a bypass"),
                     ("list", "List current bypasses"),
-                    ("plan", "Preview changes in SCM (terraform plan)"),
-                    ("deploy", "Deploy: apply to SCM and push to firewalls"),
+                    ("plan", f"Preview changes in {WS.mode.target} (terraform plan)"),
+                    ("deploy", f"Deploy: apply to {WS.mode.target} and {WS.mode.publish}"),
                     ("quit", "Quit"),
                 ],
             )
@@ -424,19 +439,19 @@ def build_parser() -> argparse.ArgumentParser:
     list_ = sub.add_parser("list", help="show current bypass entries")
     list_.add_argument("kind", nargs="?", choices=KINDS)
 
-    sub.add_parser("plan", help="show what would change in SCM")
+    sub.add_parser("plan", help="show what would change")
 
     push_opts = argparse.ArgumentParser(add_help=False)
     push_opts.add_argument("--description", default="SSL decryption bypass update via Terraform")
-    push_opts.add_argument("--timeout", type=int, default=1800, help="seconds to wait for the push (default 1800)")
-    push_opts.add_argument("--all-admins", action="store_true", help="push every admin's pending changes, not just this service account's")
+    push_opts.add_argument("--timeout", type=int, default=1800, help="seconds to wait for the push or commit (default 1800)")
+    push_opts.add_argument("--all-admins", action="store_true", help="push/commit every admin's pending changes, not just this account's")
 
-    deploy = sub.add_parser("deploy", parents=[push_opts], help="apply changes to SCM and push to firewalls")
+    deploy = sub.add_parser("deploy", parents=[push_opts], help="apply the changes, then push (SCM) or commit (local firewall)")
     deploy.add_argument("--auto-approve", action="store_true", help="skip the confirmation prompt")
-    deploy.add_argument("--no-push", action="store_true", help="apply to SCM but do not push")
-    deploy.add_argument("--force-push", action="store_true", help="push even if Terraform had nothing to change")
+    deploy.add_argument("--no-push", action="store_true", help="apply, but do not push or commit")
+    deploy.add_argument("--force-push", action="store_true", help="push or commit even if Terraform had nothing to change")
 
-    sub.add_parser("push", parents=[push_opts], help="push the candidate config only")
+    sub.add_parser("push", aliases=["commit"], parents=[push_opts], help="push (SCM) or commit (local firewall) the candidate config only")
 
     sub.add_parser("init", help="create the data directory and starter files")
     serve = sub.add_parser("serve", help="run the web GUI")
@@ -447,8 +462,15 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main() -> None:
+    global WS, BYPASS_DIR
     drop_root()
     load_env_file(Path.cwd() / ".env")
+    WS = Workspace.from_env()
+    BYPASS_DIR = WS.bypass_dir
+    try:
+        WS.mode  # noqa: B018 - validates MANAGEMENT
+    except WorkspaceError as e:
+        sys.exit(str(e))
     args = build_parser().parse_args()
     commands = {
         "add": cmd_add,
@@ -457,6 +479,7 @@ def main() -> None:
         "plan": cmd_plan,
         "deploy": cmd_deploy,
         "push": cmd_push,
+        "commit": cmd_push,
         "init": cmd_init,
         "serve": cmd_serve,
         "version": cmd_version,

@@ -8,10 +8,13 @@ import threading
 import time
 import unittest
 import urllib.parse
+import xml.etree.ElementTree as ET
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from unittest import mock
 from zoneinfo import ZoneInfo
 
+from panos_decrypt_bypass import panos_commit
 from panos_decrypt_bypass.web.advice import bypass_status, explain
 from panos_decrypt_bypass.web.panos import Firewall, PanosError, parse_entries
 from panos_decrypt_bypass.web.poller import DEMO_FIXTURE as FIXTURE
@@ -144,16 +147,34 @@ class AdviceTest(unittest.TestCase):
 
 
 class FakeFirewall(BaseHTTPRequestHandler):
-    """Just enough of the PAN-OS log API: enqueue a job, report ACT once, then FIN."""
+    """Just enough of the PAN-OS XML API: log and commit jobs that report ACT
+    once, then FIN."""
 
     requests: list[dict] = []
     polls = 0
+    commit_result = "OK"  # or "FAIL", or None for "no changes to commit"
 
     def do_GET(self):
         params = dict(urllib.parse.parse_qsl(urllib.parse.urlsplit(self.path).query))
         FakeFirewall.requests.append(params | {"key": self.headers.get("X-PAN-KEY")})
         if self.headers.get("X-PAN-KEY") != "test-key":
             body = "<response status='error' code='403'><result><msg>Invalid Credential</msg></result></response>"
+        elif params.get("type") == "commit":
+            body = (
+                "<response status='success' code='13'><result><msg>There are no changes to commit.</msg></result></response>"
+                if FakeFirewall.commit_result is None
+                else "<response status='success' code='19'><result><msg><line>Commit job enqueued with jobid 7</line></msg><job>7</job></result></response>"
+            )
+        elif params.get("type") == "op":
+            FakeFirewall.polls += 1
+            done = FakeFirewall.polls > 1
+            body = (
+                "<response status='success'><result><job><id>7</id><type>Commit</type>"
+                f"<status>{'FIN' if done else 'ACT'}</status><progress>{100 if done else 40}</progress>"
+                f"<result>{FakeFirewall.commit_result if done else 'PEND'}</result>"
+                "<details><line>Configuration committed successfully</line></details>"
+                "<warnings><line>Rule tf-ssl-bypass-urls shadows nothing</line></warnings></job></result></response>"
+            )
         elif params.get("action") == "get":
             FakeFirewall.polls += 1
             body = (
@@ -217,7 +238,7 @@ class FirewallClientTest(unittest.TestCase):
         shutil.rmtree(cls.dir)
 
     def setUp(self):
-        FakeFirewall.requests, FakeFirewall.polls = [], 0
+        FakeFirewall.requests, FakeFirewall.polls, FakeFirewall.commit_result = [], 0, "OK"
 
     def test_job_flow_with_private_ca(self):
         fw = Firewall(self.host, "test-key", ca_file=str(self.cert))
@@ -234,6 +255,43 @@ class FirewallClientTest(unittest.TestCase):
     def test_untrusted_cert_is_rejected(self):
         with self.assertRaisesRegex(PanosError, "CERTIFICATE_VERIFY_FAILED"):
             Firewall(self.host, "test-key").query_decryption_logs("")
+
+    def commit(self, **kw):
+        lines = []
+        fw = Firewall(self.host, "test-key", ca_file=str(self.cert))
+        with mock.patch.dict("os.environ", {"FIREWALL_USERNAME": "api-admin"}):
+            panos_commit.commit_and_wait("panos-decrypt-bypass: bypass a.com", interval=0, log=lines.append, firewall=fw, **kw)
+        return lines
+
+    def test_partial_commit_by_api_admin(self):
+        lines = self.commit()
+        commit, *polls = FakeFirewall.requests
+        self.assertEqual((commit["type"], commit["action"]), ("commit", "partial"))
+        cmd = ET.fromstring(commit["cmd"])
+        self.assertEqual(cmd.findtext("description"), "panos-decrypt-bypass: bypass a.com")
+        self.assertEqual([m.text for m in cmd.findall("partial/admin/member")], ["api-admin"])
+        self.assertEqual(ET.fromstring(polls[0]["cmd"]).findtext("jobs/id"), "7")
+        self.assertIn("  Configuration committed successfully", lines)
+        self.assertIn("  Rule tf-ssl-bypass-urls shadows nothing", lines)
+        self.assertEqual(lines[-1], "Commit complete.")
+
+    def test_all_admins_commit_is_not_partial(self):
+        self.commit(all_admins=True)
+        commit = FakeFirewall.requests[0]
+        self.assertNotIn("action", commit)
+        self.assertIsNone(ET.fromstring(commit["cmd"]).find("partial"))
+
+    def test_failed_commit_raises(self):
+        FakeFirewall.commit_result = "FAIL"
+        with self.assertRaisesRegex(PanosError, "Commit failed"):
+            self.commit()
+
+    def test_nothing_to_commit(self):
+        FakeFirewall.commit_result = None
+        self.assertIn("Nothing to commit", self.commit()[-1])
+        # Straight after an apply, nothing to commit means the changes belong to another admin.
+        with self.assertRaisesRegex(PanosError, "FIREWALL_USERNAME"):
+            self.commit(expect_changes=True)
 
     def test_bad_key_reports_api_error(self):
         with self.assertRaisesRegex(PanosError, "Invalid Credential"):

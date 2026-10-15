@@ -1,4 +1,4 @@
-// SCM Decrypt Bypass front end. Every value from the logs goes through
+// PAN-OS Decrypt Bypass front end. Every value from the logs goes through
 // textContent (never innerHTML): SNI, CN and error strings are attacker-controlled.
 
 const $ = (id) => document.getElementById(id);
@@ -63,6 +63,10 @@ async function loadStatus() {
     $("version").textContent = `panos-decrypt-bypass ${s.version}`;
     $("setupHint").hidden = s.configured;
     $("setupHint").textContent = "Not configured yet: set folder (or snippet) in terraform.tfvars in the data directory before deploying. See docs/configuration.md.";
+    const m = s.management;
+    $("dlgHow").textContent = m.mode === "local"
+      ? "Adds the hostnames to the no-decrypt URL category on the firewall, then commits."
+      : "Adds the hostnames to the no-decrypt URL category, then applies it in SCM and pushes to the firewall.";
     const problem = s.problems.length ? s.problems.join(" ") : s.last_error;
     const dot = el("span", { class: `dot ${problem ? "err" : s.polling ? "busy" : ""}` });
     const parts = [dot, `Firewall ${s.firewall}`];
@@ -293,10 +297,26 @@ let deployJob = null;
 let deployTimer = null;
 const ACTIVE = ["planning", "applying", "pushing"];
 
+// Wording for SCM (push) or a locally managed firewall (commit).
+function words() {
+  const local = lastStatus?.management?.mode === "local";
+  return local
+    ? { target: "the firewall", publish: "commit", step: "Commit", nochangeButton: "Commit now",
+        publishing: "Committing on the firewall. This usually takes a minute or two; you can close this window and keep working.",
+        done: "Done. The firewall has committed the new config.",
+        nochange: "Nothing to apply: the firewall already matches the bypass lists. If an earlier commit failed, commit now.",
+        failed: " The change is in the firewall's candidate config; only the commit failed." }
+    : { target: "SCM", publish: "push", step: "Push to firewall", nochangeButton: "Push to firewall",
+        publishing: "Pushing to the firewall. This usually takes a few minutes; you can close this window and keep working.",
+        done: "Done. SCM is updated and the firewall has the new config.",
+        nochange: "Nothing to apply: SCM already matches the bypass lists. If an earlier push failed, push now to send SCM's config to the firewall.",
+        failed: " SCM has the change; only the push to the firewall failed." };
+}
+
 function steps(job) {
   const list = [["planning", "Plan"]];
   if (job.kind === "manual" || job.review_reason) list.push(["review", "Review"]);
-  list.push(["applying", "Apply"], ["pushing", "Push to firewall"]);
+  list.push(["applying", "Apply"], ["pushing", words().step]);
   const failedAt = { plan: "planning", apply: "applying", push: "pushing" }[job.failed_stage];
   const at = job.state === "failed" ? failedAt : job.state;
   const idx = list.findIndex(([k]) => k === at);
@@ -310,18 +330,19 @@ function steps(job) {
 }
 
 function deployMessage(job) {
+  const w = words();
   switch (job.state) {
-    case "planning": return "Checking what will change in SCM…";
+    case "planning": return `Checking what will change in ${w.target}…`;
     case "review": return `${job.review_reason} Nothing has been changed yet.`;
-    case "applying": return "Applying to SCM…";
-    case "pushing": return "Pushing to the firewall. This usually takes a few minutes; you can close this window and keep working.";
-    case "done": return job.added.length ? `Done. ${job.added.join(", ")} ${job.added.length > 1 ? "are" : "is"} no longer decrypted.` : "Done. SCM is updated and the firewall has the new config.";
-    case "nochange": return "Nothing to apply: SCM already matches the bypass lists. If an earlier push failed, push now to send SCM's config to the firewall.";
+    case "applying": return `Applying to ${w.target}…`;
+    case "pushing": return w.publishing;
+    case "done": return job.added.length ? `Done. ${job.added.join(", ")} ${job.added.length > 1 ? "are" : "is"} no longer decrypted.` : w.done;
+    case "nochange": return w.nochange;
     case "cancelled": return "Cancelled. Nothing was changed" + (job.added.length ? `, and ${job.added.join(", ")} came back out of the list.` : ".");
     case "failed":
       return `Failed during ${job.failed_stage}: ${job.error}` +
         (job.failed_stage === "plan" && job.added.length ? " The new entries were taken back out of the list." : "") +
-        (job.failed_stage === "push" ? " SCM has the change; only the push to the firewall failed." : "");
+        (job.failed_stage === "push" ? w.failed : "");
   }
   return "";
 }
@@ -352,12 +373,12 @@ function renderDeploy() {
     buttons.push(
       act("Later", () => $("deployDialog").close(), "link"),
       act("Cancel", () => deployAction("cancel"), "secondary"),
-      act("Apply & push", () => deployAction("confirm")),
+      act(`Apply & ${words().publish}`, () => deployAction("confirm")),
     );
   } else if (job.state === "failed" && job.failed_stage === "push") {
-    buttons.push(close, act("Retry push", () => deployAction("retry-push")));
+    buttons.push(close, act(`Retry ${words().publish}`, () => deployAction("retry-push")));
   } else if (job.state === "nochange") {
-    buttons.push(close, act("Push to firewall", () => deployAction("retry-push"), "secondary"));
+    buttons.push(close, act(words().nochangeButton, () => deployAction("retry-push"), "secondary"));
   } else {
     buttons.push(close);
   }

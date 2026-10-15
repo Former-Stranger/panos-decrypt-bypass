@@ -133,7 +133,12 @@ def status() -> dict:
         "timezone": str(settings.timezone),
         "version": __version__,
         "auth": auth.enabled,
-        "configured": settings.workspace.has_location() or settings.demo,
+        "configured": settings.workspace.configured() or settings.demo,
+        "management": {
+            "mode": settings.workspace.mode.name,
+            "target": settings.workspace.mode.target,
+            "publish": settings.workspace.mode.publish,
+        },
     }
 
 

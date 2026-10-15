@@ -36,21 +36,27 @@ jobs:
         run: uv run python -m unittest discover tests -v
 
   terraform:
+    # Job name stays "Terraform" (a required check); one step per module.
     name: Terraform
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: src/panos_decrypt_bypass/terraform
     steps:
       - uses: actions/checkout@v7
       - uses: hashicorp/setup-terraform@v4
         with:
           terraform_wrapper: false
-      - run: terraform fmt -check -recursive
-      - run: terraform init -backend=false -input=false -lockfile=readonly
-      - run: terraform validate
-      - name: Test (mocked provider)
-        run: terraform test
+      - run: terraform fmt -check -recursive src/panos_decrypt_bypass/terraform
+      - name: SCM module (validate, mocked-provider tests)
+        working-directory: src/panos_decrypt_bypass/terraform/scm
+        run: |
+          terraform init -backend=false -input=false -lockfile=readonly
+          terraform validate
+          terraform test
+      - name: Local firewall module (validate, mocked-provider tests)
+        working-directory: src/panos_decrypt_bypass/terraform/local
+        run: |
+          terraform init -backend=false -input=false -lockfile=readonly
+          terraform validate
+          terraform test
 
   docker:
     name: Docker image
@@ -77,5 +83,12 @@ jobs:
           test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8088/api/status)" = 401
           docker exec pdb terraform version
           docker exec pdb panos-decrypt-bypass version
+      - name: Both modules initialise offline from the bundled providers
+        run: |
+          for module in scm local; do
+            docker run --rm --network none --entrypoint sh panos-decrypt-bypass:ci -c "
+              cp -r \"\$(python -c 'from panos_decrypt_bypass.workspace import TERRAFORM_DIR; print(TERRAFORM_DIR)')/$module\" /tmp/tf &&
+              cd /tmp/tf && terraform init -backend=false -input=false -lockfile=readonly -no-color"
+          done
       - if: failure()
         run: docker logs pdb
