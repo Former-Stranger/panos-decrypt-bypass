@@ -53,8 +53,8 @@ jobs:
         uses: docker/metadata-action@v6
         with:
           images: |
-            ghcr.io/former-stranger/scm-decrypt-bypass
-            name=docker.io/${{ env.DOCKERHUB_NAMESPACE }}/scm-decrypt-bypass,enable=${{ env.DOCKERHUB_USERNAME != '' }}
+            ghcr.io/former-stranger/panos-decrypt-bypass
+            name=docker.io/${{ env.DOCKERHUB_NAMESPACE }}/panos-decrypt-bypass,enable=${{ env.DOCKERHUB_USERNAME != '' }}
           tags: |
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
@@ -75,7 +75,7 @@ jobs:
 
       - uses: actions/attest-build-provenance@v4
         with:
-          subject-name: ghcr.io/former-stranger/scm-decrypt-bypass
+          subject-name: ghcr.io/former-stranger/panos-decrypt-bypass
           subject-digest: ${{ steps.build.outputs.digest }}
           push-to-registry: true
 

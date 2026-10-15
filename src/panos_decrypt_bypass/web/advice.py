@@ -4,7 +4,7 @@ import ipaddress
 import re
 from pathlib import Path
 
-from scm_decrypt_bypass import bypass_lists
+from panos_decrypt_bypass import bypass_lists
 
 # Alerts a client sends when it refuses the firewall's forward-proxy cert:
 # the app pins its certificate, or this device doesn't trust the firewall CA.

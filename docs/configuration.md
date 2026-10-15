@@ -1,6 +1,6 @@
 # Configuration
 
-There are three places to configure scm-decrypt-bypass:
+There are three places to configure panos-decrypt-bypass:
 
 | Where | What |
 |---|---|
@@ -55,14 +55,14 @@ container after changing them: `docker compose up -d`.
 |---|---|---|
 | `DATA_DIR` | `/data` in the image, `./data` from source | The [data directory](installation.md#the-data-directory). |
 | `PUID` / `PGID` | `1000` | User and group the container runs as, and owner of `./data`. |
-| `SDB_VERSION` | `latest` | Image tag used by `compose.yaml`. |
+| `PDB_VERSION` | `latest` | Image tag used by `compose.yaml`. |
 
 ## terraform.tfvars
 
 `data/terraform.tfvars` holds your settings for the Terraform module. It's
 created from a commented template on first start. Changes take effect on the
 next deploy: use **Deploy…** in the GUI, which shows the plan for review, or
-`scm-decrypt-bypass deploy`.
+`panos-decrypt-bypass deploy`.
 
 ### Where the config lives
 
@@ -137,12 +137,12 @@ overwrites files it didn't ship. For example:
 terraform {
   backend "s3" {
     bucket = "my-terraform-state"
-    key    = "scm-decrypt-bypass/terraform.tfstate"
+    key    = "panos-decrypt-bypass/terraform.tfstate"
     region = "eu-central-1"
   }
 }
 ```
 
 Then migrate once:
-`docker compose exec scm-decrypt-bypass sh -c 'cd /data/terraform && terraform init -migrate-state'`.
+`docker compose exec panos-decrypt-bypass sh -c 'cd /data/terraform && terraform init -migrate-state'`.
 Give the container the backend's credentials through `.env`.

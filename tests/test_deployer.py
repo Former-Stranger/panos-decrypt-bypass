@@ -13,9 +13,9 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from scm_decrypt_bypass import bypass_lists, scm_api
-from scm_decrypt_bypass.web.deployer import Busy, DemoDeployer, Deployer, summarize_plan
-from scm_decrypt_bypass.workspace import PATHS_FILE, Workspace
+from panos_decrypt_bypass import bypass_lists, scm_api
+from panos_decrypt_bypass.web.deployer import Busy, DemoDeployer, Deployer, summarize_plan
+from panos_decrypt_bypass.workspace import PATHS_FILE, Workspace
 
 FAKE_TERRAFORM = r"""#!/usr/bin/env python3
 import json, os, sys
@@ -146,13 +146,13 @@ class DeployerTest(unittest.TestCase):
         job = self.wait("done", "failed", "review")
         self.assertEqual(job.state, "done", job.log)
         self.assertIn("apply -input=false tfplan.web", self.calls.read_text())
-        self.assertEqual(self.pushes, [(["ngfw-shared"], "scm-decrypt-bypass: bypass new.example")])
+        self.assertEqual(self.pushes, [(["ngfw-shared"], "panos-decrypt-bypass: bypass new.example")])
 
     def test_push_description_names_domains_once(self):
         self.plan(URL_UPDATE)
         self.deployer.start("bypass", self.add("apple.com") + self.add("*.apple.com"))
         self.assertEqual(self.wait("done", "failed").state, "done")
-        self.assertEqual(self.pushes[0][1], "scm-decrypt-bypass: bypass apple.com")
+        self.assertEqual(self.pushes[0][1], "panos-decrypt-bypass: bypass apple.com")
 
     def test_nothing_to_apply_can_still_push(self):
         os.environ["FAKE_TF_PLAN"] = ""
@@ -160,7 +160,7 @@ class DeployerTest(unittest.TestCase):
         self.assertEqual(self.wait("nochange", "failed").state, "nochange")
         self.deployer.retry_push(job.id)
         self.assertEqual(self.wait("done", "failed").state, "done")
-        self.assertEqual(self.pushes, [(["ngfw-shared"], "scm-decrypt-bypass: deploy")])
+        self.assertEqual(self.pushes, [(["ngfw-shared"], "panos-decrypt-bypass: deploy")])
         self.assertFalse((self.work / "tfplan.web").exists())
 
     def test_unexpected_changes_wait_for_review_then_confirm(self):

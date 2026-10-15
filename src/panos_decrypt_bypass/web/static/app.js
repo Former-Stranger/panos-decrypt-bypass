@@ -60,7 +60,7 @@ async function loadStatus() {
     const s = await getJSON("/api/status");
     lastStatus = s;
     $("logout").hidden = !s.auth;
-    $("version").textContent = `scm-decrypt-bypass ${s.version}`;
+    $("version").textContent = `panos-decrypt-bypass ${s.version}`;
     $("setupHint").hidden = s.configured;
     $("setupHint").textContent = "Not configured yet: set folder (or snippet) in terraform.tfvars in the data directory before deploying. See docs/configuration.md.";
     const problem = s.problems.length ? s.problems.join(" ") : s.last_error;

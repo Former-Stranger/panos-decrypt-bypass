@@ -11,8 +11,8 @@ import threading
 import time
 from dataclasses import asdict, dataclass, field
 
-from scm_decrypt_bypass import bypass_lists, scm_api
-from scm_decrypt_bypass.workspace import Workspace, terraform_env
+from panos_decrypt_bypass import bypass_lists, scm_api
+from panos_decrypt_bypass.workspace import Workspace, terraform_env
 
 PLAN_FILE = "tfplan.web"
 MAX_LOG_LINES = 3000
@@ -221,7 +221,7 @@ class Deployer:
             folders = json.loads(self._tf_output(job, "output", "-json", "push_folders"))
             hosts = list(dict.fromkeys(e.removeprefix("*.") for e in job.added))
             what = f"bypass {' '.join(hosts)}" if hosts else "deploy"
-            scm_api.push_and_wait(folders, f"scm-decrypt-bypass: {what}", log=job.log.append)
+            scm_api.push_and_wait(folders, f"panos-decrypt-bypass: {what}", log=job.log.append)
             self._finish(job, "done")
         except Exception as e:
             self._fail(job, "push", e)

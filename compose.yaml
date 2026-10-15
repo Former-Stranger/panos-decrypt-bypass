@@ -1,11 +1,11 @@
-# scm-decrypt-bypass: copy this file and .env.example (as .env) into a folder,
+# panos-decrypt-bypass: copy this file and .env.example (as .env) into a folder,
 # fill in .env, then: docker compose up -d
 # The GUI is then at http://<host>:8088 (put it behind HTTPS; see docs/reverse-proxy.md).
 
 services:
-  scm-decrypt-bypass:
-    image: ghcr.io/former-stranger/scm-decrypt-bypass:${SDB_VERSION:-latest}
-    container_name: scm-decrypt-bypass
+  panos-decrypt-bypass:
+    image: ghcr.io/former-stranger/panos-decrypt-bypass:${PDB_VERSION:-latest}
+    container_name: panos-decrypt-bypass
     restart: unless-stopped
     env_file: .env
     environment:

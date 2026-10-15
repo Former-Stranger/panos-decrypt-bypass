@@ -1,7 +1,7 @@
-# scm-decrypt-bypass
+# panos-decrypt-bypass
 
-[![CI](https://github.com/Former-Stranger/scm-decrypt-bypass/actions/workflows/ci.yml/badge.svg)](https://github.com/Former-Stranger/scm-decrypt-bypass/actions/workflows/ci.yml)
-[![Release](https://img.shields.io/github/v/release/Former-Stranger/scm-decrypt-bypass)](https://github.com/Former-Stranger/scm-decrypt-bypass/releases)
+[![CI](https://github.com/Former-Stranger/panos-decrypt-bypass/actions/workflows/ci.yml/badge.svg)](https://github.com/Former-Stranger/panos-decrypt-bypass/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/Former-Stranger/panos-decrypt-bypass)](https://github.com/Former-Stranger/panos-decrypt-bypass/releases)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 **Find TLS decryption failures on Palo Alto Networks firewalls managed by
@@ -16,7 +16,7 @@ Strata Cloud Manager, and bypass them in one click.**
 SSL/TLS decryption breaks some apps: ones that pin their certificates, use
 client certificates, or speak TLS the firewall can't proxy. Finding them
 means digging through decryption logs, and fixing them means editing
-decryption policy and pushing config. scm-decrypt-bypass does both:
+decryption policy and pushing config. panos-decrypt-bypass does both:
 
 - a **web GUI** that pulls decryption logs from the firewall, groups the
   failures by destination and explains each one in plain English;
@@ -37,7 +37,7 @@ decryption policy and pushing config. scm-decrypt-bypass does both:
 ## How it works
 
 ```
-firewall ──XML API (decryption logs)──► scm-decrypt-bypass ──► web GUI
+firewall ──XML API (decryption logs)──► panos-decrypt-bypass ──► web GUI
                                               │
               bypass lists + terraform.tfvars │ Terraform (PaloAltoNetworks/scm)
                                               ▼
@@ -57,9 +57,9 @@ You need Docker, an SCM service account, and an XML API key for the firewall.
 [Prerequisites](docs/prerequisites.md) walks through creating them.
 
 ```bash
-mkdir scm-decrypt-bypass && cd scm-decrypt-bypass
-curl -fsSLO https://raw.githubusercontent.com/Former-Stranger/scm-decrypt-bypass/main/compose.yaml
-curl -fsSL https://raw.githubusercontent.com/Former-Stranger/scm-decrypt-bypass/main/.env.example -o .env
+mkdir panos-decrypt-bypass && cd panos-decrypt-bypass
+curl -fsSLO https://raw.githubusercontent.com/Former-Stranger/panos-decrypt-bypass/main/compose.yaml
+curl -fsSL https://raw.githubusercontent.com/Former-Stranger/panos-decrypt-bypass/main/.env.example -o .env
 $EDITOR .env                       # password, SCM service account, firewall
 docker compose up -d               # creates ./data with starter files
 $EDITOR data/terraform.tfvars      # set your SCM folder (required)
@@ -72,7 +72,7 @@ Just want a look? Demo mode needs no firewall or SCM account, and its deploys
 are simulated:
 
 ```bash
-docker run --rm -p 8088:8088 -e WEBGUI_DEMO=1 -e WEBGUI_AUTH=none ghcr.io/former-stranger/scm-decrypt-bypass
+docker run --rm -p 8088:8088 -e WEBGUI_DEMO=1 -e WEBGUI_AUTH=none ghcr.io/former-stranger/panos-decrypt-bypass
 ```
 
 ## Documentation
@@ -95,7 +95,7 @@ docker run --rm -p 8088:8088 -e WEBGUI_DEMO=1 -e WEBGUI_AUTH=none ghcr.io/former
   Prisma Access, and firewalls whose logs are only in Strata Logging Service,
   aren't supported yet.
 - Images are published for linux/amd64 and linux/arm64, on
-  `ghcr.io/former-stranger/scm-decrypt-bypass` and `docker.io/formerstranger/scm-decrypt-bypass`.
+  `ghcr.io/former-stranger/panos-decrypt-bypass` and `docker.io/formerstranger/panos-decrypt-bypass`.
 
 ## Security
 

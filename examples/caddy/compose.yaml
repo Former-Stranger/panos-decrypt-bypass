@@ -1,9 +1,9 @@
-# scm-decrypt-bypass behind Caddy for HTTPS. Copy this folder, add .env (from
+# panos-decrypt-bypass behind Caddy for HTTPS. Copy this folder, add .env (from
 # the repo's .env.example), pick a Caddyfile, then: docker compose up -d
 services:
-  scm-decrypt-bypass:
-    image: ghcr.io/former-stranger/scm-decrypt-bypass:${SDB_VERSION:-latest}
-    container_name: scm-decrypt-bypass
+  panos-decrypt-bypass:
+    image: ghcr.io/former-stranger/panos-decrypt-bypass:${PDB_VERSION:-latest}
+    container_name: panos-decrypt-bypass
     restart: unless-stopped
     env_file: .env
     environment:
@@ -17,10 +17,10 @@ services:
 
   caddy:
     image: caddy:2
-    container_name: scm-decrypt-bypass-caddy
+    container_name: panos-decrypt-bypass-caddy
     restart: unless-stopped
     depends_on:
-      - scm-decrypt-bypass
+      - panos-decrypt-bypass
     ports:
       - "80:80"
       - "443:443"

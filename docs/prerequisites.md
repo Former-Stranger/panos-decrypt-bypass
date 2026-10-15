@@ -1,6 +1,6 @@
 # Prerequisites
 
-scm-decrypt-bypass only works with firewalls **managed by Strata Cloud
+panos-decrypt-bypass only works with firewalls **managed by Strata Cloud
 Manager**. Firewalls managed by Panorama or locally aren't supported.
 
 You need three things before installing: an SCM service account, an XML API

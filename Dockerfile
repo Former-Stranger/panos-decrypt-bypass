@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-# scm-decrypt-bypass: web GUI + CLI, with Terraform and the SCM provider built in.
+# panos-decrypt-bypass: web GUI + CLI, with Terraform and the SCM provider built in.
 FROM python:3.13-slim
 
 ARG TERRAFORM_VERSION=1.16.6
@@ -31,7 +31,7 @@ RUN uv sync --locked --no-dev --no-editable
 # Pre-install the SCM provider into a local mirror and point Terraform at it,
 # so `terraform init` never needs the registry at runtime.
 RUN mkdir -p /opt/terraform/providers \
-    && cp -r /app/src/scm_decrypt_bypass/terraform /tmp/tf-module \
+    && cp -r /app/src/panos_decrypt_bypass/terraform /tmp/tf-module \
     && cd /tmp/tf-module \
     && terraform init -backend=false -input=false -no-color > /dev/null \
     && terraform providers mirror -platform=linux_${TARGETARCH:-amd64} /opt/terraform/providers \
@@ -65,9 +65,9 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=20s \
     CMD ["python", "-c", "import os, urllib.request; urllib.request.urlopen('http://127.0.0.1:' + os.environ.get('WEBGUI_PORT', '8088') + '/healthz', timeout=3)"]
 
 ENTRYPOINT ["entrypoint"]
-CMD ["scm-decrypt-bypass", "serve"]
+CMD ["panos-decrypt-bypass", "serve"]
 
-LABEL org.opencontainers.image.title="scm-decrypt-bypass" \
+LABEL org.opencontainers.image.title="panos-decrypt-bypass" \
       org.opencontainers.image.description="Find TLS decryption failures on Palo Alto Networks firewalls and bypass them through Strata Cloud Manager" \
-      org.opencontainers.image.source="https://github.com/Former-Stranger/scm-decrypt-bypass" \
+      org.opencontainers.image.source="https://github.com/Former-Stranger/panos-decrypt-bypass" \
       org.opencontainers.image.licenses="MIT"

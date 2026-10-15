@@ -1,6 +1,6 @@
-# scm-decrypt-bypass settings. Lives in your data directory (DATA_DIR,
+# panos-decrypt-bypass settings. Lives in your data directory (DATA_DIR,
 # /data in the container); edit it, then use Deploy… in the web GUI or
-# `scm-decrypt-bypass deploy`. Every setting is described in variables.tf
+# `panos-decrypt-bypass deploy`. Every setting is described in variables.tf
 # and in docs/configuration.md.
 
 # --- Where the config lives in Strata Cloud Manager (required) ---------------

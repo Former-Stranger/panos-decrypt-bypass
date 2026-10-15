@@ -1,14 +1,14 @@
-"""scm-decrypt-bypass: manage SSL decryption bypasses in Strata Cloud Manager.
+"""panos-decrypt-bypass: manage SSL decryption bypasses in Strata Cloud Manager.
 
-    scm-decrypt-bypass                         # interactive menu
-    scm-decrypt-bypass add url mybank.com --subdomains -d "Online banking"
-    scm-decrypt-bypass remove url mybank.com
-    scm-decrypt-bypass list
-    scm-decrypt-bypass plan                    # show what would change in SCM
-    scm-decrypt-bypass deploy                  # plan, confirm, apply, push to firewalls
-    scm-decrypt-bypass push                    # push the candidate config without applying
-    scm-decrypt-bypass serve                   # run the web GUI
-    scm-decrypt-bypass init                    # create the data directory
+    panos-decrypt-bypass                         # interactive menu
+    panos-decrypt-bypass add url mybank.com --subdomains -d "Online banking"
+    panos-decrypt-bypass remove url mybank.com
+    panos-decrypt-bypass list
+    panos-decrypt-bypass plan                    # show what would change in SCM
+    panos-decrypt-bypass deploy                  # plan, confirm, apply, push to firewalls
+    panos-decrypt-bypass push                    # push the candidate config without applying
+    panos-decrypt-bypass serve                   # run the web GUI
+    panos-decrypt-bypass init                    # create the data directory
 
 add/remove/list only edit the bypass lists; nothing reaches SCM until you
 deploy. Kinds you can add: url, category, destination, source, user.
@@ -29,9 +29,9 @@ import subprocess
 import sys
 from pathlib import Path
 
-from scm_decrypt_bypass import __version__, bypass_lists, scm_api
-from scm_decrypt_bypass.bypass_lists import KINDS
-from scm_decrypt_bypass.workspace import Workspace, terraform_env
+from panos_decrypt_bypass import __version__, bypass_lists, scm_api
+from panos_decrypt_bypass.bypass_lists import KINDS
+from panos_decrypt_bypass.workspace import Workspace, terraform_env
 
 PLAN_FILE = "tfplan"
 ADDABLE = [k for k in KINDS if k != "exclusion"]
@@ -58,7 +58,7 @@ def drop_root() -> None:
     if os.name != "posix" or os.geteuid() != 0 or not puid or not shutil.which("setpriv"):
         return
     pgid = os.environ.get("PGID", puid)
-    argv = ["setpriv", f"--reuid={puid}", f"--regid={pgid}", "--clear-groups", sys.executable, "-m", "scm_decrypt_bypass", *sys.argv[1:]]
+    argv = ["setpriv", f"--reuid={puid}", f"--regid={pgid}", "--clear-groups", sys.executable, "-m", "panos_decrypt_bypass", *sys.argv[1:]]
     os.execvp("setpriv", argv)  # noqa: S606 - fixed program, re-running this same command
 
 
@@ -143,7 +143,7 @@ def cmd_deploy(args: argparse.Namespace) -> None:
         print("No changes to apply, nothing to push. Use --force-push to push anyway.")
         return
     if args.no_push:
-        print("Skipping push (--no-push). Run `scm-decrypt-bypass push` when ready.")
+        print("Skipping push (--no-push). Run `panos-decrypt-bypass push` when ready.")
         return
     do_push(args)
 
@@ -168,15 +168,15 @@ def cmd_serve(args: argparse.Namespace) -> None:
 
     import uvicorn
 
-    from scm_decrypt_bypass.web.settings import Settings
+    from panos_decrypt_bypass.web.settings import Settings
 
     if os.environ.get("WEBGUI_DEMO", "").lower() in ("1", "true", "yes", "on") and not os.environ.get("DATA_DIR"):
-        os.environ["DATA_DIR"] = tempfile.mkdtemp(prefix="scm-decrypt-bypass-demo-")
+        os.environ["DATA_DIR"] = tempfile.mkdtemp(prefix="panos-decrypt-bypass-demo-")
         print(f"Demo mode: using a throwaway data directory, {os.environ['DATA_DIR']}")
     errors = Settings.from_env().startup_errors()
     if errors:
         sys.exit("\n".join(errors))
-    uvicorn.run("scm_decrypt_bypass.web.app:app", host=args.host, port=args.port, proxy_headers=True, forwarded_allow_ips="*", access_log=False)
+    uvicorn.run("panos_decrypt_bypass.web.app:app", host=args.host, port=args.port, proxy_headers=True, forwarded_allow_ips="*", access_log=False)
 
 
 def cmd_version(args: argparse.Namespace) -> None:
@@ -271,7 +271,7 @@ def finish_edit(changed: int, deploy: bool) -> None:
     elif deploy:
         cmd_deploy(build_parser().parse_args(["deploy"]))
     else:
-        print(f"\n{changed} change(s) saved to {BYPASS_DIR}. Run `scm-decrypt-bypass deploy` to push them.")
+        print(f"\n{changed} change(s) saved to {BYPASS_DIR}. Run `panos-decrypt-bypass deploy` to push them.")
 
 
 # --- Interactive menu --------------------------------------------------------
@@ -402,7 +402,7 @@ def interactive() -> None:
     except (EOFError, KeyboardInterrupt):
         print()
     if pending:
-        print(f"{pending} change(s) saved to {BYPASS_DIR} but not deployed. Run `scm-decrypt-bypass deploy` when ready.")
+        print(f"{pending} change(s) saved to {BYPASS_DIR} but not deployed. Run `panos-decrypt-bypass deploy` when ready.")
 
 
 def build_parser() -> argparse.ArgumentParser:

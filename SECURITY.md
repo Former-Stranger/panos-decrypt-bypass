@@ -1,6 +1,6 @@
 # Security policy
 
-scm-decrypt-bypass changes the decryption policy of production firewalls, so
+panos-decrypt-bypass changes the decryption policy of production firewalls, so
 security reports are taken seriously.
 
 ## Reporting a vulnerability

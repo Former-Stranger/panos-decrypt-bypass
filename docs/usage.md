@@ -1,4 +1,4 @@
-# Using scm-decrypt-bypass
+# Using panos-decrypt-bypass
 
 ## The web GUI
 
@@ -75,7 +75,7 @@ You can close the panel while a deploy runs; a banner at the top shows its
 progress. Only one deploy runs at a time.
 
 Destinations with no hostname can't go in the URL list (the button is greyed
-out). Add their IP from the CLI: `scm-decrypt-bypass add destination 203.0.113.50`.
+out). Add their IP from the CLI: `panos-decrypt-bypass add destination 203.0.113.50`.
 
 ### Deploy…
 
@@ -93,21 +93,21 @@ the bypass dialog asks you to complete it before adding.
 
 ## The command line
 
-In Docker, prefix commands with `docker compose exec scm-decrypt-bypass`.
+In Docker, prefix commands with `docker compose exec panos-decrypt-bypass`.
 
 | Command | |
 |---|---|
-| `scm-decrypt-bypass` | Interactive menu: add, remove, list, plan, deploy |
-| `scm-decrypt-bypass add url example.org --subdomains -d "Vendor app"` | Add entries. Kinds: `url`, `category`, `destination`, `source`, `user`. |
-| `scm-decrypt-bypass remove url example.org` | Remove entries (also `exclusion`) |
-| `scm-decrypt-bypass list [kind]` | Show the lists |
-| `scm-decrypt-bypass plan` | Show what would change in SCM (read-only) |
-| `scm-decrypt-bypass deploy` | Plan, confirm, apply, push, and wait for each firewall's result |
-| `scm-decrypt-bypass deploy --no-push` | Apply to SCM only; push later |
-| `scm-decrypt-bypass push` | Push without applying (e.g. retry a failed push) |
-| `scm-decrypt-bypass init` | Create the data directory and starter files |
-| `scm-decrypt-bypass serve` | Run the web GUI |
-| `scm-decrypt-bypass version` | Print the version |
+| `panos-decrypt-bypass` | Interactive menu: add, remove, list, plan, deploy |
+| `panos-decrypt-bypass add url example.org --subdomains -d "Vendor app"` | Add entries. Kinds: `url`, `category`, `destination`, `source`, `user`. |
+| `panos-decrypt-bypass remove url example.org` | Remove entries (also `exclusion`) |
+| `panos-decrypt-bypass list [kind]` | Show the lists |
+| `panos-decrypt-bypass plan` | Show what would change in SCM (read-only) |
+| `panos-decrypt-bypass deploy` | Plan, confirm, apply, push, and wait for each firewall's result |
+| `panos-decrypt-bypass deploy --no-push` | Apply to SCM only; push later |
+| `panos-decrypt-bypass push` | Push without applying (e.g. retry a failed push) |
+| `panos-decrypt-bypass init` | Create the data directory and starter files |
+| `panos-decrypt-bypass serve` | Run the web GUI |
+| `panos-decrypt-bypass version` | Print the version |
 
 `add` and `remove` only edit the lists; add `--deploy` to deploy straight away.
 Entries are cleaned up as they're added: pasted URLs become hostnames, case and

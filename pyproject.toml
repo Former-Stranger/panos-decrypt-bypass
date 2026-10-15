@@ -1,5 +1,5 @@
 [project]
-name = "scm-decrypt-bypass"
+name = "panos-decrypt-bypass"
 version = "0.1.0"
 description = "Find TLS decryption failures on Palo Alto Networks firewalls and bypass them through Strata Cloud Manager with Terraform"
 readme = "README.md"
@@ -26,13 +26,13 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/Former-Stranger/scm-decrypt-bypass"
-Documentation = "https://github.com/Former-Stranger/scm-decrypt-bypass/tree/main/docs"
-Issues = "https://github.com/Former-Stranger/scm-decrypt-bypass/issues"
-Changelog = "https://github.com/Former-Stranger/scm-decrypt-bypass/blob/main/CHANGELOG.md"
+Homepage = "https://github.com/Former-Stranger/panos-decrypt-bypass"
+Documentation = "https://github.com/Former-Stranger/panos-decrypt-bypass/tree/main/docs"
+Issues = "https://github.com/Former-Stranger/panos-decrypt-bypass/issues"
+Changelog = "https://github.com/Former-Stranger/panos-decrypt-bypass/blob/main/CHANGELOG.md"
 
 [project.scripts]
-scm-decrypt-bypass = "scm_decrypt_bypass.cli:main"
+panos-decrypt-bypass = "panos_decrypt_bypass.cli:main"
 
 [dependency-groups]
 dev = ["ruff>=0.6"]
@@ -42,8 +42,8 @@ requires = ["hatchling>=1.27"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/scm_decrypt_bypass"]
-exclude = ["src/scm_decrypt_bypass/terraform/tests", "src/scm_decrypt_bypass/terraform/.terraform"]
+packages = ["src/panos_decrypt_bypass"]
+exclude = ["src/panos_decrypt_bypass/terraform/tests", "src/panos_decrypt_bypass/terraform/.terraform"]
 
 [tool.hatch.build.targets.sdist]
 include = ["src", "tests", "docs", "examples", "README.md", "LICENSE", "CHANGELOG.md"]

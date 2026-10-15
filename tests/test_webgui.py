@@ -12,10 +12,10 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-from scm_decrypt_bypass.web.advice import bypass_status, explain
-from scm_decrypt_bypass.web.panos import Firewall, PanosError, parse_entries
-from scm_decrypt_bypass.web.poller import DEMO_FIXTURE as FIXTURE
-from scm_decrypt_bypass.web.store import Store
+from panos_decrypt_bypass.web.advice import bypass_status, explain
+from panos_decrypt_bypass.web.panos import Firewall, PanosError, parse_entries
+from panos_decrypt_bypass.web.poller import DEMO_FIXTURE as FIXTURE
+from panos_decrypt_bypass.web.store import Store
 
 TZ = ZoneInfo("Europe/Berlin")
 
@@ -63,7 +63,7 @@ class StoreTest(unittest.TestCase):
         import sqlite3
 
         path = self.dir / "old.db"
-        old_cols = [c for c in __import__("scm_decrypt_bypass.web.store", fromlist=["COLUMNS"]).COLUMNS if c != "sni_truncated"]
+        old_cols = [c for c in __import__("panos_decrypt_bypass.web.store", fromlist=["COLUMNS"]).COLUMNS if c != "sni_truncated"]
         db = sqlite3.connect(path)
         db.execute(
             f"CREATE TABLE events (uid TEXT PRIMARY KEY, ts REAL, target TEXT, failed INTEGER, {', '.join(c + ' TEXT' for c in old_cols)}, raw TEXT)"

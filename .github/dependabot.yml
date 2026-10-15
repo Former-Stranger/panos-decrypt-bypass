@@ -19,6 +19,6 @@ updates:
     schedule:
       interval: weekly
   - package-ecosystem: terraform
-    directory: /src/scm_decrypt_bypass/terraform
+    directory: /src/panos_decrypt_bypass/terraform
     schedule:
       interval: weekly

@@ -1,6 +1,6 @@
 # Offline plan against a mocked SCM provider. From the repo root:
-#   terraform -chdir=src/scm_decrypt_bypass/terraform init -backend=false
-#   terraform -chdir=src/scm_decrypt_bypass/terraform test
+#   terraform -chdir=src/panos_decrypt_bypass/terraform init -backend=false
+#   terraform -chdir=src/panos_decrypt_bypass/terraform test
 # Uses the lists in tests/fixtures instead of a data directory.
 
 mock_provider "scm" {}

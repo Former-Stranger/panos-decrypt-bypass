@@ -107,7 +107,7 @@ resource "scm_tag" "bypass" {
   snippet  = local.location.snippet
   name     = var.name_prefix
   color    = "Orange"
-  comments = "Managed by Terraform (scm-decrypt-bypass)"
+  comments = "Managed by Terraform (panos-decrypt-bypass)"
 }
 
 resource "scm_url_category" "no_decrypt" {

@@ -16,7 +16,7 @@ import threading
 import time
 from pathlib import Path
 
-COOKIE = "sdb_session"
+COOKIE = "pdb_session"
 FAILURE_WINDOW = 600  # seconds
 FAILURE_LIMIT = 10  # failures per client per window before refusing
 SCRYPT = {"n": 2**14, "r": 8, "p": 1, "dklen": 32}  # ~16 MiB, tens of ms per check

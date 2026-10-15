@@ -9,4 +9,4 @@ tests
 **/__pycache__
 **/.terraform
 **/terraform.tfstate*
-src/scm_decrypt_bypass/terraform/tests
+src/panos_decrypt_bypass/terraform/tests

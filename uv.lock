@@ -236,7 +236,7 @@ wheels = [
 ]
 
 [[package]]
-name = "scm-decrypt-bypass"
+name = "panos-decrypt-bypass"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [

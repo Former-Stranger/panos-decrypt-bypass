@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-from scm_decrypt_bypass.workspace import Workspace
+from panos_decrypt_bypass.workspace import Workspace
 
 
 def _bool(value: str | None, default: bool) -> bool:

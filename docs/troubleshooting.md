@@ -4,7 +4,7 @@ Start with the status line at the top right of the GUI (last poll, or the
 error), the deploy panel's **Log**, and the container log:
 
 ```bash
-docker compose logs --tail 100 scm-decrypt-bypass
+docker compose logs --tail 100 panos-decrypt-bypass
 ```
 
 ## The container keeps restarting
@@ -43,7 +43,7 @@ firewall's timezone.
 | A rule refers to an object that doesn't exist | Names in `source_addresses`, `no_decrypt_profile` and the EDL settings must exist in the folder or a parent folder. |
 
 **The push failed but the apply worked:** the change is in SCM. Use
-**Retry push** in the deploy panel, or `scm-decrypt-bypass push`. After a
+**Retry push** in the deploy panel, or `panos-decrypt-bypass push`. After a
 restart, **Deploy…** finds nothing to apply and offers **Push to firewall**.
 
 **A bypass is deployed but traffic is still decrypted:**
@@ -58,7 +58,7 @@ restart, **Deploy…** finds nothing to apply and offers **Push to firewall**.
 ### Importing an existing object
 
 ```bash
-docker compose exec scm-decrypt-bypass sh -c \
+docker compose exec panos-decrypt-bypass sh -c \
   'cd /data/terraform && terraform import "scm_decryption_exclusion.this[\"pinned.example.com\"]" "my-folder:::<uuid>"'
 ```
 
@@ -79,6 +79,6 @@ forward-trust certificate. Bypassing them one by one hides the real problem.
 
 ## Getting help
 
-Open an [issue](https://github.com/Former-Stranger/scm-decrypt-bypass/issues)
+Open an [issue](https://github.com/Former-Stranger/panos-decrypt-bypass/issues)
 with the version, how you run it and the error. Remove hostnames, IPs, tenant
 IDs and keys first.

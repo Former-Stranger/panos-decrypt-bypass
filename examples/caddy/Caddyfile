@@ -6,5 +6,5 @@
 
 {$SITE_ADDRESS} {
 	tls internal
-	reverse_proxy scm-decrypt-bypass:8088
+	reverse_proxy panos-decrypt-bypass:8088
 }

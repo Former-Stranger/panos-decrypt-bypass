@@ -40,7 +40,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: src/scm_decrypt_bypass/terraform
+        working-directory: src/panos_decrypt_bypass/terraform
     steps:
       - uses: actions/checkout@v7
       - uses: hashicorp/setup-terraform@v4
@@ -62,20 +62,20 @@ jobs:
         with:
           context: .
           load: true
-          tags: scm-decrypt-bypass:ci
+          tags: panos-decrypt-bypass:ci
           cache-from: type=gha
           cache-to: type=gha,mode=max
       - name: Smoke test (demo mode)
         run: |
-          docker run -d --name sdb -p 8088:8088 -e WEBGUI_DEMO=1 -e WEBGUI_PASSWORD=ci-password-1234 scm-decrypt-bypass:ci
+          docker run -d --name pdb -p 8088:8088 -e WEBGUI_DEMO=1 -e WEBGUI_PASSWORD=ci-password-1234 panos-decrypt-bypass:ci
           for i in $(seq 1 30); do
-            [ "$(docker inspect -f '{{.State.Health.Status}}' sdb)" = healthy ] && break
+            [ "$(docker inspect -f '{{.State.Health.Status}}' pdb)" = healthy ] && break
             sleep 2
           done
-          docker inspect -f '{{.State.Health.Status}}' sdb | grep -qx healthy
+          docker inspect -f '{{.State.Health.Status}}' pdb | grep -qx healthy
           curl -fsS http://127.0.0.1:8088/healthz
           test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8088/api/status)" = 401
-          docker exec sdb terraform version
-          docker exec sdb scm-decrypt-bypass version
+          docker exec pdb terraform version
+          docker exec pdb panos-decrypt-bypass version
       - if: failure()
-        run: docker logs sdb
+        run: docker logs pdb

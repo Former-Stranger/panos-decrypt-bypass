@@ -21,7 +21,7 @@ from pathlib import Path
 PACKAGE_DIR = Path(__file__).resolve().parent
 MODULE_DIR = PACKAGE_DIR / "terraform"
 TEMPLATES_DIR = PACKAGE_DIR / "templates"
-PATHS_FILE = "zz-scm-decrypt-bypass.auto.tfvars.json"
+PATHS_FILE = "zz-panos-decrypt-bypass.auto.tfvars.json"
 
 
 def default_data_dir() -> Path:

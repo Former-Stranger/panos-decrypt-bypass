@@ -13,5 +13,5 @@
 }
 
 {$SITE_ADDRESS} {
-	reverse_proxy scm-decrypt-bypass:8088
+	reverse_proxy panos-decrypt-bypass:8088
 }

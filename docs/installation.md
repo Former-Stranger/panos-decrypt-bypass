@@ -1,15 +1,15 @@
 # Installation
 
-The recommended way to run scm-decrypt-bypass is the Docker image, which
+The recommended way to run panos-decrypt-bypass is the Docker image, which
 includes Terraform and the SCM provider. Check the
 [prerequisites](prerequisites.md) first.
 
 ## Docker Compose
 
 ```bash
-mkdir scm-decrypt-bypass && cd scm-decrypt-bypass
-curl -fsSLO https://raw.githubusercontent.com/Former-Stranger/scm-decrypt-bypass/main/compose.yaml
-curl -fsSL https://raw.githubusercontent.com/Former-Stranger/scm-decrypt-bypass/main/.env.example -o .env
+mkdir panos-decrypt-bypass && cd panos-decrypt-bypass
+curl -fsSLO https://raw.githubusercontent.com/Former-Stranger/panos-decrypt-bypass/main/compose.yaml
+curl -fsSL https://raw.githubusercontent.com/Former-Stranger/panos-decrypt-bypass/main/.env.example -o .env
 chmod 600 .env
 ```
 
@@ -28,7 +28,7 @@ chmod 600 .env
    [Configuration](configuration.md#terraformtfvars).
 4. **Check the plan** (read-only):
    ```bash
-   docker compose exec scm-decrypt-bypass scm-decrypt-bypass plan
+   docker compose exec panos-decrypt-bypass panos-decrypt-bypass plan
    ```
    On a fresh install it shows the tag it will create, plus rules for any
    lists you've filled in.
@@ -41,11 +41,11 @@ Then put it behind HTTPS: see the [reverse proxy guide](reverse-proxy.md).
 
 | Registry | Image |
 |---|---|
-| GitHub Container Registry | `ghcr.io/former-stranger/scm-decrypt-bypass` |
-| Docker Hub | `docker.io/formerstranger/scm-decrypt-bypass` |
+| GitHub Container Registry | `ghcr.io/former-stranger/panos-decrypt-bypass` |
+| Docker Hub | `docker.io/formerstranger/panos-decrypt-bypass` |
 
 Tags: `latest`, the exact version (`0.1.0`), and the minor line (`0.1`). Set
-`SDB_VERSION` in `.env` to pin a version. Images are built for linux/amd64 and
+`PDB_VERSION` in `.env` to pin a version. Images are built for linux/amd64 and
 linux/arm64, with provenance attestations and an SBOM.
 
 ### The data directory
@@ -70,15 +70,15 @@ knows which SCM objects it manages. To keep state elsewhere, see
 The CLI is in the image. Run it with `docker compose exec`:
 
 ```bash
-docker compose exec scm-decrypt-bypass scm-decrypt-bypass list
-docker compose exec scm-decrypt-bypass scm-decrypt-bypass add url example.org --subdomains -d "Vendor app"
-docker compose exec scm-decrypt-bypass scm-decrypt-bypass   # interactive menu
+docker compose exec panos-decrypt-bypass panos-decrypt-bypass list
+docker compose exec panos-decrypt-bypass panos-decrypt-bypass add url example.org --subdomains -d "Vendor app"
+docker compose exec panos-decrypt-bypass panos-decrypt-bypass   # interactive menu
 ```
 
 An alias saves typing:
 
 ```bash
-alias sdb='docker compose exec scm-decrypt-bypass scm-decrypt-bypass'
+alias pdb='docker compose exec panos-decrypt-bypass panos-decrypt-bypass'
 ```
 
 ## Upgrading
@@ -97,12 +97,12 @@ For development, or without Docker. You need Python 3.12+,
 [uv](https://docs.astral.sh/uv/) and Terraform 1.9+.
 
 ```bash
-git clone https://github.com/Former-Stranger/scm-decrypt-bypass.git
-cd scm-decrypt-bypass
+git clone https://github.com/Former-Stranger/panos-decrypt-bypass.git
+cd panos-decrypt-bypass
 uv sync
 cp .env.example .env   # and fill it in
-uv run scm-decrypt-bypass init
-uv run scm-decrypt-bypass serve          # http://127.0.0.1:8088
+uv run panos-decrypt-bypass init
+uv run panos-decrypt-bypass serve          # http://127.0.0.1:8088
 ```
 
 The CLI reads `.env` from the current directory and keeps data in `./data`
@@ -120,8 +120,8 @@ The bypass objects stay in SCM. To remove everything the app created first,
 run `terraform destroy` in the data directory, then push:
 
 ```bash
-docker compose exec scm-decrypt-bypass sh -c 'cd /data/terraform && terraform destroy'
-docker compose exec scm-decrypt-bypass scm-decrypt-bypass push
+docker compose exec panos-decrypt-bypass sh -c 'cd /data/terraform && terraform destroy'
+docker compose exec panos-decrypt-bypass panos-decrypt-bypass push
 ```
 
 Objects are named with the `name_prefix` (default `tf-ssl-bypass`) and tagged
