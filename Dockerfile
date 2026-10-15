@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 # panos-decrypt-bypass: web GUI + CLI, with Terraform and the SCM and PAN-OS providers built in.
-FROM python:3.13-slim
+FROM python:3.14-slim
 
 ARG TERRAFORM_VERSION=1.16.6
 ARG TARGETARCH
