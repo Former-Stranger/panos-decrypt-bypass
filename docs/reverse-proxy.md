@@ -18,11 +18,11 @@ Whatever proxy you use:
 gets and renews certificates by itself.
 
 ```bash
-mkdir scm-decrypt-bypass && cd scm-decrypt-bypass
+mkdir panos-decrypt-bypass && cd panos-decrypt-bypass
 for f in compose.yaml Caddyfile Caddyfile.step-ca; do
-  curl -fsSLO https://raw.githubusercontent.com/Former-Stranger/scm-decrypt-bypass/main/examples/caddy/$f
+  curl -fsSLO https://raw.githubusercontent.com/Former-Stranger/panos-decrypt-bypass/main/examples/caddy/$f
 done
-curl -fsSL https://raw.githubusercontent.com/Former-Stranger/scm-decrypt-bypass/main/.env.example -o .env
+curl -fsSL https://raw.githubusercontent.com/Former-Stranger/panos-decrypt-bypass/main/.env.example -o .env
 echo "SITE_ADDRESS=decrypt.example.com" >> .env   # your hostname
 docker compose up -d
 ```
@@ -48,14 +48,14 @@ Pick the Caddyfile that matches how you get certificates:
 }
 
 {$SITE_ADDRESS} {
-	reverse_proxy scm-decrypt-bypass:8088
+	reverse_proxy panos-decrypt-bypass:8088
 }
 ```
 
 step-ca validates with the http-01 challenge, so it must reach Caddy on port 80
 at the name you're requesting. step-ca's certificates last 24 hours by default;
 Caddy renews them automatically, about a third of the lifetime before expiry.
-`docker logs scm-decrypt-bypass-caddy | grep -i certificate` shows the
+`docker logs panos-decrypt-bypass-caddy | grep -i certificate` shows the
 renewals.
 
 ## Adding it to an existing reverse proxy
@@ -65,7 +65,7 @@ instead of publishing a port:
 
 ```yaml
 services:
-  scm-decrypt-bypass:
+  panos-decrypt-bypass:
     # ...as in compose.yaml, but without "ports:"
     networks: [proxy]
 networks:
@@ -73,13 +73,13 @@ networks:
     external: true   # your proxy's network
 ```
 
-Then point the proxy at `scm-decrypt-bypass:8088`.
+Then point the proxy at `panos-decrypt-bypass:8088`.
 
 **Caddy:**
 
 ```caddyfile
 decrypt.example.com {
-	reverse_proxy scm-decrypt-bypass:8088
+	reverse_proxy panos-decrypt-bypass:8088
 }
 ```
 
@@ -93,7 +93,7 @@ server {
     ssl_certificate_key /etc/nginx/certs/decrypt.key;
 
     location / {
-        proxy_pass http://scm-decrypt-bypass:8088;
+        proxy_pass http://panos-decrypt-bypass:8088;
         proxy_set_header Host $host;
         proxy_set_header X-Forwarded-Proto $scheme;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -107,9 +107,9 @@ server {
 ```yaml
 labels:
   - traefik.enable=true
-  - traefik.http.routers.sdb.rule=Host(`decrypt.example.com`)
-  - traefik.http.routers.sdb.tls=true
-  - traefik.http.services.sdb.loadbalancer.server.port=8088
+  - traefik.http.routers.pdb.rule=Host(`decrypt.example.com`)
+  - traefik.http.routers.pdb.tls=true
+  - traefik.http.services.pdb.loadbalancer.server.port=8088
 ```
 
 ## Logging in through your proxy instead

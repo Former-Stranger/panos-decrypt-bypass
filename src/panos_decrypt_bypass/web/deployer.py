@@ -1,4 +1,5 @@
-"""One deploy at a time from the web GUI: terraform plan → (review) → apply → SCM push.
+"""One deploy at a time from the web GUI: terraform plan → (review) → apply →
+push (SCM) or commit (local firewall).
 
 A bypass deploy applies without asking only when the plan touches nothing but
 the no-decrypt URL list (and, the first time, the rule that uses it). Anything
@@ -11,8 +12,8 @@ import threading
 import time
 from dataclasses import asdict, dataclass, field
 
-from scm_decrypt_bypass import bypass_lists, scm_api
-from scm_decrypt_bypass.workspace import Workspace, terraform_env
+from panos_decrypt_bypass import bypass_lists, panos_commit, scm_api
+from panos_decrypt_bypass.workspace import Workspace
 
 PLAN_FILE = "tfplan.web"
 MAX_LOG_LINES = 3000
@@ -22,7 +23,30 @@ AUTO_APPROVE = {
     ("scm_url_category.no_decrypt[0]", ("update",)),
     ("scm_url_category.no_decrypt[0]", ("create",)),
     ("module.rule_urls[0].scm_decryption_rule.this", ("create",)),
+    ("panos_custom_url_category.no_decrypt[0]", ("update",)),
+    ("panos_custom_url_category.no_decrypt[0]", ("create",)),
 }
+# On a local firewall every no-decrypt rule lives in this one resource, so it
+# may change without review only by gaining the URL rule (see _only_adds_url_rule).
+PANOS_RULES = "panos_decryption_policy_rules.no_decrypt[0]"
+RULE_KEYS = (
+    "name",
+    "description",
+    "action",
+    "type",
+    "source_zones",
+    "destination_zones",
+    "source_addresses",
+    "destination_addresses",
+    "source_user",
+    "category",
+    "services",
+    "profile",
+    "log_setting",
+    "log_success",
+    "log_fail",
+    "tag",
+)
 IGNORED_ATTRS = {"id", "tfid"}
 
 
@@ -37,6 +61,7 @@ class Job:
     state: str = "planning"  # planning, review, applying, pushing, done, nochange, failed, cancelled
     added: list[str] = field(default_factory=list)
     description: str = ""
+    applied: bool = False
     changes: list[dict] = field(default_factory=list)
     review_reason: str = ""
     failed_stage: str = ""
@@ -82,15 +107,49 @@ def _diff(before: dict, after: dict, unknown: dict) -> list[str]:
     return parts
 
 
+def _rule(rule: dict) -> dict:
+    return {k: rule.get(k) for k in RULE_KEYS}
+
+
+def _rules_diff(before: dict, after: dict) -> list[str]:
+    """Per-rule changes for the PAN-OS rules resource, instead of one huge list diff."""
+    old = {r["name"]: _rule(r) for r in before.get("rules") or []}
+    new = {r["name"]: _rule(r) for r in after.get("rules") or []}
+    parts = [f"+ rule {n}" for n in new if n not in old] + [f"- rule {n}" for n in old if n not in new]
+    for name in new.keys() & old.keys():
+        parts += [f"rule {name}: {d}" for d in _diff(old[name], new[name], {})]
+    if before and list(old) != list(new) and [n for n in new if n in old] != [n for n in old if n in new]:
+        parts.append("rule order: " + ", ".join(new))
+    if before and before.get("position") != after.get("position"):
+        parts.append(f"position: {_fmt(before.get('position'))} → {_fmt(after.get('position'))}")
+    return parts
+
+
+def _only_adds_url_rule(change: dict) -> bool:
+    """True if a PAN-OS rules change does nothing but add the URL rule."""
+    before, after = change.get("before") or {}, change.get("after") or {}
+    old = [_rule(r) for r in before.get("rules") or []]
+    new = [_rule(r) for r in after.get("rules") or []]
+    added = [r for r in new if r["name"] not in {o["name"] for o in old}]
+    return (
+        len(added) == 1
+        and added[0]["name"].endswith("-urls")
+        and [r for r in new if r is not added[0]] == old
+        and (not before or (before.get("position") == after.get("position") and before.get("location") == after.get("location")))
+    )
+
+
 def _label(address: str, after: dict | None, before: dict | None) -> str:
     name = (after or before or {}).get("name", "")
-    if address.startswith("scm_url_category.no_decrypt"):
+    if address.startswith(("scm_url_category.no_decrypt", "panos_custom_url_category.no_decrypt")):
         return f"No-decrypt URL list ({name})"
     if ".scm_decryption_rule." in address:
         return f"Decryption rule {name}"
+    if address.startswith("panos_decryption_policy_rules"):
+        return "No-decrypt decryption rules"
     if address.startswith("scm_decryption_exclusion"):
         return f"Decryption exclusion {name}"
-    if address.startswith("scm_address"):
+    if address.startswith(("scm_address", "panos_address")):
         return f"Address object {name}"
     return f"{address}"
 
@@ -104,7 +163,9 @@ def summarize_plan(plan: dict) -> tuple[list[dict], bool]:
         if actions in (("no-op",), ("read",)):
             continue
         before, after = ch.get("before") or {}, ch.get("after") or {}
-        if actions == ("update",):
+        if rc["address"] == PANOS_RULES and actions in (("update",), ("create",)):
+            detail = _rules_diff(before, after)
+        elif actions == ("update",):
             detail = _diff(before, after, ch.get("after_unknown") or {})
         elif "delete" in actions and "create" in actions:
             detail = ["replace"]
@@ -116,15 +177,18 @@ def summarize_plan(plan: dict) -> tuple[list[dict], bool]:
                 "actions": list(actions),
                 "label": _label(rc["address"], ch.get("after"), ch.get("before")),
                 "detail": detail,
+                "auto": (rc["address"], actions) in AUTO_APPROVE
+                or (rc["address"] == PANOS_RULES and actions in (("update",), ("create",)) and _only_adds_url_rule(ch)),
             }
         )
-    auto = bool(changes) and all((c["address"], tuple(c["actions"])) in AUTO_APPROVE for c in changes)
+    auto = bool(changes) and all(c.pop("auto") for c in changes)
     return changes, auto
 
 
 class Deployer:
     def __init__(self, workspace: Workspace):
         self.workspace = workspace
+        self.mode = workspace.mode
         self.workdir = workspace.tf_dir
         self.bypass_dir = workspace.bypass_dir
         self.lock = threading.Lock()
@@ -171,7 +235,7 @@ class Deployer:
             if not job or job.id != job_id:
                 raise Busy(f"Deploy #{job_id} is not the current deploy.")
             if not (job.state == "nochange" or (job.state == "failed" and job.failed_stage == "push")):
-                raise Busy("Only a failed push, or a deploy with nothing to apply, can be pushed; start a new deploy instead.")
+                raise Busy(f"Only a failed {self.mode.publish}, or a deploy with nothing to apply, can be retried; start a new deploy instead.")
             job.state, job.error, job.failed_stage, job.finished = "pushing", "", "", None
         threading.Thread(target=self._push, args=(job,), daemon=True).start()
         return job
@@ -180,7 +244,7 @@ class Deployer:
 
     def _plan(self, job: Job) -> None:
         try:
-            if not self.workspace.has_location():
+            if not self.workspace.configured():
                 raise RuntimeError(f"Set folder (or snippet) in {self.workspace.tfvars} first.")
             self.workspace.prepare_terraform()
             self._tf_output(job, "init", "-input=false")
@@ -188,7 +252,7 @@ class Deployer:
             rc = self._tf(job, "plan", "-input=false", "-detailed-exitcode", f"-out={PLAN_FILE}", ok=(0, 2))
             if rc == 0:
                 (self.workdir / PLAN_FILE).unlink(missing_ok=True)
-                job.log.append("No changes: SCM already matches the bypass lists.")
+                job.log.append(f"No changes: {self.mode.target} already matches the bypass lists.")
                 self._finish(job, "nochange")
                 return
             plan = json.loads(self._tf_output(job, "show", "-json", PLAN_FILE))
@@ -198,7 +262,9 @@ class Deployer:
                 self._apply_and_push(job)
             else:
                 job.review_reason = (
-                    "This deploy changes more than the no-decrypt URL list." if job.kind == "bypass" else "Review the changes, then apply and push."
+                    "This deploy changes more than the no-decrypt URL list."
+                    if job.kind == "bypass"
+                    else f"Review the changes, then apply and {self.mode.publish}."
                 )
                 job.state = "review"
         except Exception as e:
@@ -208,6 +274,7 @@ class Deployer:
     def _apply_and_push(self, job: Job) -> None:
         try:
             self._tf(job, "apply", "-input=false", PLAN_FILE)
+            job.applied = True
         except Exception as e:
             self._fail(job, "apply", e)
             return
@@ -218,10 +285,13 @@ class Deployer:
     def _push(self, job: Job) -> None:
         job.state = "pushing"
         try:
-            folders = json.loads(self._tf_output(job, "output", "-json", "push_folders"))
             hosts = list(dict.fromkeys(e.removeprefix("*.") for e in job.added))
-            what = f"bypass {' '.join(hosts)}" if hosts else "deploy"
-            scm_api.push_and_wait(folders, f"scm-decrypt-bypass: {what}", log=job.log.append)
+            description = f"panos-decrypt-bypass: {'bypass ' + ' '.join(hosts) if hosts else 'deploy'}"
+            if self.mode.name == "local":
+                panos_commit.commit_and_wait(description, log=job.log.append, expect_changes=job.applied)
+            else:
+                folders = json.loads(self._tf_output(job, "output", "-json", "push_folders"))
+                scm_api.push_and_wait(folders, description, log=job.log.append)
             self._finish(job, "done")
         except Exception as e:
             self._fail(job, "push", e)
@@ -257,7 +327,7 @@ class Deployer:
         proc = subprocess.Popen(
             ["terraform", args[0], "-no-color", *args[1:]],
             cwd=self.workdir,
-            env=terraform_env(),
+            env=self.workspace.terraform_env(),
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             text=True,
@@ -274,7 +344,7 @@ class Deployer:
         result = subprocess.run(
             ["terraform", args[0], "-no-color", *args[1:]],
             cwd=self.workdir,
-            env=terraform_env(),
+            env=self.workspace.terraform_env(),
             capture_output=True,
             text=True,
         )
@@ -286,7 +356,7 @@ class Deployer:
 
 class DemoDeployer(Deployer):
     """For WEBGUI_DEMO: walks through the same states with made-up output and
-    never runs Terraform or contacts SCM."""
+    never runs Terraform or contacts SCM or the firewall."""
 
     STEP = 1.2
 
@@ -294,12 +364,12 @@ class DemoDeployer(Deployer):
         job.log.append("$ terraform plan (demo: nothing is sent anywhere)")
         time.sleep(self.STEP)
         if not job.added:
-            job.log.append("No changes: SCM already matches the bypass lists.")
+            job.log.append(f"No changes: {self.mode.target} already matches the bypass lists.")
             self._finish(job, "nochange")
             return
         job.changes = [
             {
-                "address": "scm_url_category.no_decrypt[0]",
+                "address": f"{'panos_custom' if self.mode.name == 'local' else 'scm'}_url_category.no_decrypt[0]",
                 "actions": ["update"],
                 "label": "No-decrypt URL list (tf-ssl-bypass-urls)",
                 "detail": [f"list: {', '.join('+' + e for e in job.added)}"],
@@ -317,8 +387,14 @@ class DemoDeployer(Deployer):
 
     def _push(self, job: Job) -> None:
         job.state = "pushing"
-        job.log.append("Pushing ngfw-shared (demo)")
-        time.sleep(self.STEP * 2)
-        job.log.append("  fw-demo: OK")
-        job.log.append("Push complete.")
+        if self.mode.name == "local":
+            job.log.append("Committing changes by api-admin only (demo)")
+            time.sleep(self.STEP * 2)
+            job.log.append("Commit job 42: OK")
+            job.log.append("Commit complete.")
+        else:
+            job.log.append("Pushing ngfw-shared (demo)")
+            time.sleep(self.STEP * 2)
+            job.log.append("  fw-demo: OK")
+            job.log.append("Push complete.")
         self._finish(job, "done")

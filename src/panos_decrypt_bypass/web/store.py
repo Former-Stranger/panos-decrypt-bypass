@@ -9,7 +9,7 @@ from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-from scm_decrypt_bypass.web.panos import LogEntry, fields_from_raw
+from panos_decrypt_bypass.web.panos import LogEntry, fields_from_raw
 
 COLUMNS = (
     "receive_time",

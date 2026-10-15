@@ -1,13 +1,13 @@
 [project]
-name = "scm-decrypt-bypass"
-version = "0.1.0"
-description = "Find TLS decryption failures on Palo Alto Networks firewalls and bypass them through Strata Cloud Manager with Terraform"
+name = "panos-decrypt-bypass"
+version = "0.2.0"
+description = "Find TLS decryption failures on Palo Alto Networks firewalls and bypass them with Terraform, through Strata Cloud Manager or on the firewall itself"
 readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE"]
 authors = [{ name = "Former-Stranger" }]
 requires-python = ">=3.12"
-keywords = ["palo-alto-networks", "strata-cloud-manager", "ssl-decryption", "tls", "terraform", "firewall"]
+keywords = ["palo-alto-networks", "pan-os", "strata-cloud-manager", "ssl-decryption", "tls", "terraform", "firewall"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Environment :: Web Environment",
@@ -17,6 +17,7 @@ classifiers = [
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Topic :: System :: Networking :: Firewalls",
 ]
 dependencies = [
@@ -26,13 +27,13 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/Former-Stranger/scm-decrypt-bypass"
-Documentation = "https://github.com/Former-Stranger/scm-decrypt-bypass/tree/main/docs"
-Issues = "https://github.com/Former-Stranger/scm-decrypt-bypass/issues"
-Changelog = "https://github.com/Former-Stranger/scm-decrypt-bypass/blob/main/CHANGELOG.md"
+Homepage = "https://github.com/Former-Stranger/panos-decrypt-bypass"
+Documentation = "https://github.com/Former-Stranger/panos-decrypt-bypass/tree/main/docs"
+Issues = "https://github.com/Former-Stranger/panos-decrypt-bypass/issues"
+Changelog = "https://github.com/Former-Stranger/panos-decrypt-bypass/blob/main/CHANGELOG.md"
 
 [project.scripts]
-scm-decrypt-bypass = "scm_decrypt_bypass.cli:main"
+panos-decrypt-bypass = "panos_decrypt_bypass.cli:main"
 
 [dependency-groups]
 dev = ["ruff>=0.6"]
@@ -42,8 +43,8 @@ requires = ["hatchling>=1.27"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/scm_decrypt_bypass"]
-exclude = ["src/scm_decrypt_bypass/terraform/tests", "src/scm_decrypt_bypass/terraform/.terraform"]
+packages = ["src/panos_decrypt_bypass"]
+exclude = ["src/panos_decrypt_bypass/terraform/*/tests", "src/panos_decrypt_bypass/terraform/*/.terraform"]
 
 [tool.hatch.build.targets.sdist]
 include = ["src", "tests", "docs", "examples", "README.md", "LICENSE", "CHANGELOG.md"]

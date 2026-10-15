@@ -4,7 +4,7 @@ Start with the status line at the top right of the GUI (last poll, or the
 error), the deploy panel's **Log**, and the container log:
 
 ```bash
-docker compose logs --tail 100 scm-decrypt-bypass
+docker compose logs --tail 100 panos-decrypt-bypass
 ```
 
 ## The container keeps restarting
@@ -35,22 +35,28 @@ firewall's timezone.
 | Error | Fix |
 |---|---|
 | `Set folder (or snippet) in …/terraform.tfvars first` | Edit `data/terraform.tfvars`. |
-| `Missing SCM_CLIENT_ID …` | Fill in the `SCM_*` values in `.env`. |
+| `Missing SCM_CLIENT_ID …` | Fill in the `SCM_*` values in `.env`, or set `MANAGEMENT=local` if SCM doesn't manage the firewall. |
+| `Missing FIREWALL_USERNAME …` | With `MANAGEMENT=local`, set it to the admin that owns the API key. |
+| `The firewall found no changes by … to commit` | `FIREWALL_USERNAME` isn't the admin that owns `FIREWALL_API_KEY`, so the partial commit skipped the changes. Fix the name, then use **Retry commit**. |
+| `The Terraform state … manages objects in …` | `MANAGEMENT` changed, but `data/` holds the other mode's state. Set it back, or use a new data directory. |
+| `Unauthorized` / `403` from the panos provider | The API admin's role is missing XML API **Configuration**, **Operational Requests** or **Commit** (see [prerequisites](prerequisites.md#2-firewall-xml-api-key)). |
+| `x509: certificate signed by unknown authority` (local) | Terraform doesn't trust the management certificate. Set `FIREWALL_CA_FILE`; `FIREWALL_HOST` must match the certificate. |
 | `Refresh JWT Authentication error` / HTTP 401 | Wrong client ID, secret or `SCM_SCOPE` (`tsg_id:<id>`). |
 | `CERTIFICATE_VERIFY_FAILED` contacting `api.sase.paloaltonetworks.com` or `auth.apps.paloaltonetworks.com` | Your firewall is decrypting the Docker host's own traffic to SCM. Bypass decryption for those hostnames (see [prerequisites](prerequisites.md#4-network-access-from-the-docker-host)). |
 | `Object … already exists` / name conflict | An object with the same name already exists in SCM. Rename it, delete it, or import it into the state (below). |
 | `Invalid Command … description is invalid` | Push descriptions are cleaned automatically; if you see this, please open an issue with the description. |
 | A rule refers to an object that doesn't exist | Names in `source_addresses`, `no_decrypt_profile` and the EDL settings must exist in the folder or a parent folder. |
 
-**The push failed but the apply worked:** the change is in SCM. Use
-**Retry push** in the deploy panel, or `scm-decrypt-bypass push`. After a
-restart, **Deploy…** finds nothing to apply and offers **Push to firewall**.
+**The push or commit failed but the apply worked:** the change is in SCM or
+the firewall's candidate config. Use **Retry push** (**Retry commit**) in the
+deploy panel, or `panos-decrypt-bypass push`. After a restart, **Deploy…**
+finds nothing to apply and offers **Push to firewall** (**Commit now**).
 
 **A bypass is deployed but traffic is still decrypted:**
 
-- Rules in parent folders are evaluated first: a decrypt rule above yours may
-  match first. Move the bypass config to that folder, or adjust
-  `rule_placement`.
+- A decrypt rule above the no-decrypt rules may match first. With SCM, rules
+  in parent folders are evaluated first: move the bypass config to that
+  folder. Otherwise adjust `rule_placement`.
 - Check the zones and source in `terraform.tfvars` match the client.
 - The firewall only sees the SNI. If the client sends a different name than
   you added (check the session details), add that name.
@@ -58,12 +64,14 @@ restart, **Deploy…** finds nothing to apply and offers **Push to firewall**.
 ### Importing an existing object
 
 ```bash
-docker compose exec scm-decrypt-bypass sh -c \
-  'cd /data/terraform && terraform import "scm_decryption_exclusion.this[\"pinned.example.com\"]" "my-folder:::<uuid>"'
+docker compose exec panos-decrypt-bypass panos-decrypt-bypass terraform \
+  import 'scm_decryption_exclusion.this["pinned.example.com"]' 'my-folder:::<uuid>'
 ```
 
 The ID format is `folder:::uuid` (or `:snippet::uuid`). Find the UUID in SCM or
-through the SCM API.
+through the SCM API. For a locally managed firewall, see each resource's
+*Import* section in the
+[PAN-OS provider docs](https://registry.terraform.io/providers/PaloAltoNetworks/panos/latest/docs).
 
 ## Hostnames ending in "…"
 
@@ -79,6 +87,6 @@ forward-trust certificate. Bypassing them one by one hides the real problem.
 
 ## Getting help
 
-Open an [issue](https://github.com/Former-Stranger/scm-decrypt-bypass/issues)
+Open an [issue](https://github.com/Former-Stranger/panos-decrypt-bypass/issues)
 with the version, how you run it and the error. Remove hostnames, IPs, tenant
 IDs and keys first.

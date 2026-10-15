@@ -6,11 +6,11 @@ import time
 from datetime import datetime, timedelta
 from pathlib import Path
 
-from scm_decrypt_bypass.web.panos import Firewall, LogEntry, PanosError, parse_entries
-from scm_decrypt_bypass.web.settings import Settings
-from scm_decrypt_bypass.web.store import Store
+from panos_decrypt_bypass.web.panos import Firewall, LogEntry, PanosError, parse_entries
+from panos_decrypt_bypass.web.settings import Settings
+from panos_decrypt_bypass.web.store import Store
 
-log = logging.getLogger("scm_decrypt_bypass.poller")
+log = logging.getLogger("panos_decrypt_bypass.poller")
 
 PAGE_SIZE = 1000
 MAX_PAGES = 10

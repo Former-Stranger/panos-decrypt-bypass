@@ -1,4 +1,4 @@
-# Using scm-decrypt-bypass
+# Using panos-decrypt-bypass
 
 ## The web GUI
 
@@ -54,35 +54,37 @@ Click **Bypass…**:
    *Will add* shows exactly what goes into the list, and you can edit the
    hostnames before adding.
 2. Optionally change the description, which is stored with each entry and
-   shown in SCM.
+   shown on the URL category.
 3. Click **Add & deploy**.
 
-The deploy panel then shows each step: plan, apply, push to firewall.
+The deploy panel then shows each step: plan, apply, then push to firewall
+(SCM) or commit (locally managed firewall).
 
 ![Finished deploy](images/deploy-done.jpg)
 
 - **Applied without asking** only when the plan changes nothing but the
   no-decrypt URL list (and, the first time, creates its rule).
 - **Stops for review** if anything else would change: other rules, settings
-  you edited in `terraform.tfvars`, deletions, or changes someone made in SCM
-  by hand. It lists every change: **Apply & push** continues, **Cancel** takes
-  your new entries back out of the list, and **Later** leaves the review
-  waiting.
-- If **the push fails**, the change is already in SCM. **Retry push** sends it
-  again without re-applying.
+  you edited in `terraform.tfvars`, deletions, or changes someone made by
+  hand. It lists every change: **Apply & push** (or **Apply & commit**)
+  continues, **Cancel** takes your new entries back out of the list, and
+  **Later** leaves the review waiting.
+- If **the push or commit fails**, the change is already in SCM or the
+  firewall's candidate config. **Retry push** (**Retry commit**) tries again
+  without re-applying.
 
 You can close the panel while a deploy runs; a banner at the top shows its
 progress. Only one deploy runs at a time.
 
 Destinations with no hostname can't go in the URL list (the button is greyed
-out). Add their IP from the CLI: `scm-decrypt-bypass add destination 203.0.113.50`.
+out). Add their IP from the CLI: `panos-decrypt-bypass add destination 203.0.113.50`.
 
 ### Deploy…
 
 **Deploy…** (top right) plans whatever is pending, such as edits to
 `terraform.tfvars` or lists you changed by hand, and always stops for review. If
-there's nothing to apply but an earlier push failed, it offers **Push to
-firewall**.
+there's nothing to apply but an earlier push or commit failed, it offers
+**Push to firewall** (**Commit now**).
 
 ### Truncated hostnames
 
@@ -93,26 +95,28 @@ the bypass dialog asks you to complete it before adding.
 
 ## The command line
 
-In Docker, prefix commands with `docker compose exec scm-decrypt-bypass`.
+In Docker, prefix commands with `docker compose exec panos-decrypt-bypass`.
 
 | Command | |
 |---|---|
-| `scm-decrypt-bypass` | Interactive menu: add, remove, list, plan, deploy |
-| `scm-decrypt-bypass add url example.org --subdomains -d "Vendor app"` | Add entries. Kinds: `url`, `category`, `destination`, `source`, `user`. |
-| `scm-decrypt-bypass remove url example.org` | Remove entries (also `exclusion`) |
-| `scm-decrypt-bypass list [kind]` | Show the lists |
-| `scm-decrypt-bypass plan` | Show what would change in SCM (read-only) |
-| `scm-decrypt-bypass deploy` | Plan, confirm, apply, push, and wait for each firewall's result |
-| `scm-decrypt-bypass deploy --no-push` | Apply to SCM only; push later |
-| `scm-decrypt-bypass push` | Push without applying (e.g. retry a failed push) |
-| `scm-decrypt-bypass init` | Create the data directory and starter files |
-| `scm-decrypt-bypass serve` | Run the web GUI |
-| `scm-decrypt-bypass version` | Print the version |
+| `panos-decrypt-bypass` | Interactive menu: add, remove, list, plan, deploy |
+| `panos-decrypt-bypass add url example.org --subdomains -d "Vendor app"` | Add entries. Kinds: `url`, `category`, `destination`, `source`, `user`. |
+| `panos-decrypt-bypass remove url example.org` | Remove entries (also `exclusion`) |
+| `panos-decrypt-bypass list [kind]` | Show the lists |
+| `panos-decrypt-bypass plan` | Show what would change (read-only) |
+| `panos-decrypt-bypass deploy` | Plan, confirm, apply, then push or commit and wait for the result |
+| `panos-decrypt-bypass deploy --no-push` | Apply only; push or commit later |
+| `panos-decrypt-bypass push` (or `commit`) | Push or commit without applying (e.g. retry a failed one) |
+| `panos-decrypt-bypass terraform <args>` | Run any Terraform command (`destroy`, `import`, `state list`, …) with the app's settings |
+| `panos-decrypt-bypass init` | Create the data directory and starter files |
+| `panos-decrypt-bypass serve` | Run the web GUI |
+| `panos-decrypt-bypass version` | Print the version |
 
 `add` and `remove` only edit the lists; add `--deploy` to deploy straight away.
 Entries are cleaned up as they're added: pasted URLs become hostnames, case and
 trailing slashes are normalised, and duplicates are skipped. `--subdomains`
 turns `www.example.org` into `example.org` and `*.example.org`.
 
-`deploy` and `push` only include the service account's own changes. Add
-`--all-admins` to push everything that's pending in the folder.
+`deploy` and `push` only include the SCM service account's own changes, or
+`FIREWALL_USERNAME`'s on a locally managed firewall. Add `--all-admins` to
+push or commit everything that's pending.

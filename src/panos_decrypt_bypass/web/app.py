@@ -1,6 +1,6 @@
 """Web GUI: shows TLS decryption failures and turns them into bypasses.
 
-Started by `scm-decrypt-bypass serve` (the container's default command).
+Started by `panos-decrypt-bypass serve` (the container's default command).
 """
 
 import asyncio
@@ -15,13 +15,13 @@ from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from scm_decrypt_bypass import __version__, bypass_lists
-from scm_decrypt_bypass.web.advice import bypass_status, explain
-from scm_decrypt_bypass.web.auth import COOKIE, Auth
-from scm_decrypt_bypass.web.deployer import Busy, DemoDeployer, Deployer
-from scm_decrypt_bypass.web.poller import Poller
-from scm_decrypt_bypass.web.settings import Settings
-from scm_decrypt_bypass.web.store import Store
+from panos_decrypt_bypass import __version__, bypass_lists
+from panos_decrypt_bypass.web.advice import bypass_status, explain
+from panos_decrypt_bypass.web.auth import COOKIE, Auth
+from panos_decrypt_bypass.web.deployer import Busy, DemoDeployer, Deployer
+from panos_decrypt_bypass.web.poller import Poller
+from panos_decrypt_bypass.web.settings import Settings
+from panos_decrypt_bypass.web.store import Store
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 
@@ -57,7 +57,7 @@ async def lifespan(_: FastAPI):
     task.cancel()
 
 
-app = FastAPI(title="scm-decrypt-bypass", version=__version__, lifespan=lifespan, docs_url=None, redoc_url=None)
+app = FastAPI(title="panos-decrypt-bypass", version=__version__, lifespan=lifespan, docs_url=None, redoc_url=None)
 app.mount("/static", StaticFiles(directory=STATIC), name="static")
 
 
@@ -133,7 +133,12 @@ def status() -> dict:
         "timezone": str(settings.timezone),
         "version": __version__,
         "auth": auth.enabled,
-        "configured": settings.workspace.has_location() or settings.demo,
+        "configured": settings.workspace.configured() or settings.demo,
+        "management": {
+            "mode": settings.workspace.mode.name,
+            "target": settings.workspace.mode.target,
+            "publish": settings.workspace.mode.publish,
+        },
     }
 
 

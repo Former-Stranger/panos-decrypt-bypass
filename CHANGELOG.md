@@ -6,6 +6,38 @@ All notable changes are listed here. The format follows
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-15
+
+### Added
+- Support for locally managed firewalls (`MANAGEMENT=local`): a second
+  Terraform module, using the PaloAltoNetworks/panos provider, creates the
+  same URL category, address objects, tag, EDLs, profile and no-decrypt
+  rules in a vsys on the firewall, and the app commits them over the XML
+  API. Commits include only `FIREWALL_USERNAME`'s changes. One-click
+  bypasses, review, retry and the CLI work as with SCM.
+- `FIREWALL_CA_FILE` is also trusted by Terraform in local mode.
+- `panos-decrypt-bypass commit` as an alias of `push`.
+- `panos-decrypt-bypass terraform <args>` runs any Terraform command with the
+  app's settings, for `destroy`, `import` and state commands.
+- The status area now flags missing SCM or firewall settings for the
+  selected mode.
+
+### Changed
+- **Renamed from scm-decrypt-bypass to panos-decrypt-bypass**: the
+  repository, images (`ghcr.io/former-stranger/panos-decrypt-bypass`,
+  `docker.io/formerstranger/panos-decrypt-bypass`), CLI command, Python
+  package and compose service. `PDB_VERSION` replaces `SDB_VERSION`. See
+  [upgrading from 0.1.0](docs/installation.md#upgrading-from-scm-decrypt-bypass-010).
+- The bypass tag's comment now names panos-decrypt-bypass, so the first
+  deploy after upgrading shows it as a change to review.
+- Signing in again is needed once, because the session cookie was renamed.
+- The SCM Terraform module moved to `terraform/scm/`. Data directories are
+  migrated automatically, and module files from older versions are removed.
+
+### Notes
+- Decryption exclusions (`exclusion-hostnames.txt`) remain SCM-only. On a
+  locally managed firewall they're ignored with a warning.
+
 ## [0.1.0] - 2026-10-14
 
 First public release.

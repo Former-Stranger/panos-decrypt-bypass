@@ -19,13 +19,13 @@ body:
     id: logs
     attributes:
       label: Logs or error messages
-      description: From the deploy panel's log, `docker logs scm-decrypt-bypass`, or the CLI. Redacted, please.
+      description: From the deploy panel's log, `docker logs panos-decrypt-bypass`, or the CLI. Redacted, please.
       render: text
   - type: input
     id: version
     attributes:
       label: Version
-      description: Shown at the bottom of the web GUI, or `scm-decrypt-bypass version`.
+      description: Shown at the bottom of the web GUI, or `panos-decrypt-bypass version`.
     validations:
       required: true
   - type: dropdown

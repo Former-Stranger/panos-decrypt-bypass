@@ -7,8 +7,8 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from scm_decrypt_bypass.web import auth as auth_module
-from scm_decrypt_bypass.web.auth import Auth
+from panos_decrypt_bypass.web import auth as auth_module
+from panos_decrypt_bypass.web.auth import Auth
 
 PASSWORD = "correct-horse-battery"
 

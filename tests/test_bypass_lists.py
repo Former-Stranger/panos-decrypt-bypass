@@ -7,8 +7,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from scm_decrypt_bypass import bypass_lists as bl
-from scm_decrypt_bypass.workspace import Workspace
+from panos_decrypt_bypass import bypass_lists as bl
+from panos_decrypt_bypass.workspace import Workspace
 
 
 class CleanTest(unittest.TestCase):

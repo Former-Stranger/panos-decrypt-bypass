@@ -8,7 +8,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-from scm_decrypt_bypass.workspace import Workspace
+from panos_decrypt_bypass import scm_api
+from panos_decrypt_bypass.workspace import MODES, Workspace
 
 
 def _bool(value: str | None, default: bool) -> bool:
@@ -22,6 +23,7 @@ class Settings:
     workspace: Workspace
     firewall_host: str
     api_key: str
+    firewall_username: str
     verify_tls: bool
     ca_file: Path | None
     timezone: ZoneInfo
@@ -42,6 +44,7 @@ class Settings:
             workspace=Workspace.from_env(),
             firewall_host=os.environ.get("FIREWALL_HOST", "").strip(),
             api_key=os.environ.get("FIREWALL_API_KEY", "").strip(),
+            firewall_username=os.environ.get("FIREWALL_USERNAME", "").strip(),
             verify_tls=_bool(os.environ.get("FIREWALL_VERIFY_TLS"), True),
             ca_file=Path(os.environ["FIREWALL_CA_FILE"]) if os.environ.get("FIREWALL_CA_FILE") else None,
             timezone=ZoneInfo(tz),
@@ -67,6 +70,8 @@ class Settings:
     def startup_errors(self) -> list[str]:
         """Problems that stop the app from starting at all."""
         errors = []
+        if self.workspace.management not in MODES:
+            errors.append(f"MANAGEMENT must be {' or '.join(MODES)}, not {self.workspace.management!r}.")
         if self.auth not in ("password", "none"):
             errors.append(f"WEBGUI_AUTH must be 'password' or 'none', not {self.auth!r}.")
         elif self.auth == "password" and not self.password:
@@ -81,7 +86,12 @@ class Settings:
         """Problems shown in the GUI's status area."""
         if self.demo:
             return []
-        missing = [name for name, value in (("FIREWALL_HOST", self.firewall_host), ("FIREWALL_API_KEY", self.api_key)) if not value]
+        required = [("FIREWALL_HOST", self.firewall_host), ("FIREWALL_API_KEY", self.api_key)]
+        if self.workspace.management == "local":
+            required.append(("FIREWALL_USERNAME", self.firewall_username))
+        else:
+            required += [(name, os.environ.get(name, "").strip()) for name in scm_api.REQUIRED_ENV]
+        missing = [name for name, value in required if not value]
         problems = [f"{', '.join(missing)} not set. Add to .env (see .env.example)."] if missing else []
         if self.ca_file and not self.ca_file.exists():
             problems.append(f"FIREWALL_CA_FILE {self.ca_file} does not exist.")
