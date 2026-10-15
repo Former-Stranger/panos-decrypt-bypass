@@ -138,13 +138,15 @@ docker compose down
 ```
 
 The bypass objects stay in SCM or on the firewall. To remove everything the
-app created first, run `terraform destroy` in the data directory, then push or
+app created first, run `terraform destroy` through the app, then push or
 commit:
 
 ```bash
-docker compose exec panos-decrypt-bypass sh -c 'cd /data/terraform && terraform destroy'
+docker compose exec panos-decrypt-bypass panos-decrypt-bypass terraform destroy
 docker compose exec panos-decrypt-bypass panos-decrypt-bypass push
 ```
+
+`push` commits instead on a locally managed firewall.
 
 Objects are named with the `name_prefix` (default `tf-ssl-bypass`) and tagged
 with it, so they're easy to find.

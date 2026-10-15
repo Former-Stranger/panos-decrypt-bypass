@@ -8,6 +8,7 @@ firewalls, through Strata Cloud Manager or directly on a locally managed firewal
     panos-decrypt-bypass plan                    # show what would change
     panos-decrypt-bypass deploy                  # plan, confirm, apply, push/commit
     panos-decrypt-bypass push                    # push/commit without applying (alias: commit)
+    panos-decrypt-bypass terraform destroy       # run terraform in the working directory
     panos-decrypt-bypass serve                   # run the web GUI
     panos-decrypt-bypass init                    # create the data directory
 
@@ -167,6 +168,15 @@ def cmd_push(args: argparse.Namespace) -> None:
     if WS.mode.name == "scm":
         terraform_init()  # push folders come from terraform output
     do_publish(args)
+
+
+def cmd_terraform(args: argparse.Namespace) -> None:
+    """Run any terraform command in the working directory, with the same
+    credentials and settings deploys use (e.g. destroy, import, state list)."""
+    preflight()
+    terraform_init()
+    args_ = args.args[1:] if args.args[:1] == ["--"] else args.args
+    sys.exit(terraform(*args_, check=False).returncode)
 
 
 def cmd_init(args: argparse.Namespace) -> None:
@@ -453,6 +463,9 @@ def build_parser() -> argparse.ArgumentParser:
 
     sub.add_parser("push", aliases=["commit"], parents=[push_opts], help="push (SCM) or commit (local firewall) the candidate config only")
 
+    tf = sub.add_parser("terraform", help="run terraform in the working directory with the app's settings (e.g. destroy, import)")
+    tf.add_argument("args", nargs=argparse.REMAINDER, help="terraform arguments")
+
     sub.add_parser("init", help="create the data directory and starter files")
     serve = sub.add_parser("serve", help="run the web GUI")
     serve.add_argument("--host", default=os.environ.get("WEBGUI_HOST", "127.0.0.1"), help="address to listen on (default 127.0.0.1, or WEBGUI_HOST)")
@@ -480,6 +493,7 @@ def main() -> None:
         "deploy": cmd_deploy,
         "push": cmd_push,
         "commit": cmd_push,
+        "terraform": cmd_terraform,
         "init": cmd_init,
         "serve": cmd_serve,
         "version": cmd_version,

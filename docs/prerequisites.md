@@ -75,6 +75,11 @@ The key stops working if that admin's password changes. With `local`, treat
 the key like an admin password: it can change and commit the firewall's
 config.
 
+PAN-OS 11.x may add a warning to commit results that the key was generated
+with a deprecated algorithm. It's harmless, but you can switch to the newer
+keys under **Device → Setup → Management → Authentication Settings → API Key
+Certificate**, then generate a new key.
+
 ## 3. Decryption logging
 
 The viewer only sees what the firewall logs:

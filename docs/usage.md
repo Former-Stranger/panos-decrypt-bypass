@@ -107,6 +107,7 @@ In Docker, prefix commands with `docker compose exec panos-decrypt-bypass`.
 | `panos-decrypt-bypass deploy` | Plan, confirm, apply, then push or commit and wait for the result |
 | `panos-decrypt-bypass deploy --no-push` | Apply only; push or commit later |
 | `panos-decrypt-bypass push` (or `commit`) | Push or commit without applying (e.g. retry a failed one) |
+| `panos-decrypt-bypass terraform <args>` | Run any Terraform command (`destroy`, `import`, `state list`, …) with the app's settings |
 | `panos-decrypt-bypass init` | Create the data directory and starter files |
 | `panos-decrypt-bypass serve` | Run the web GUI |
 | `panos-decrypt-bypass version` | Print the version |

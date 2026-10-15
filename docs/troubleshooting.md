@@ -64,8 +64,8 @@ finds nothing to apply and offers **Push to firewall** (**Commit now**).
 ### Importing an existing object
 
 ```bash
-docker compose exec panos-decrypt-bypass sh -c \
-  'cd /data/terraform && terraform import "scm_decryption_exclusion.this[\"pinned.example.com\"]" "my-folder:::<uuid>"'
+docker compose exec panos-decrypt-bypass panos-decrypt-bypass terraform \
+  import 'scm_decryption_exclusion.this["pinned.example.com"]' 'my-folder:::<uuid>'
 ```
 
 The ID format is `folder:::uuid` (or `:snippet::uuid`). Find the UUID in SCM or

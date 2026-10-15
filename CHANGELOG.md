@@ -17,6 +17,8 @@ All notable changes are listed here. The format follows
   bypasses, review, retry and the CLI work as with SCM.
 - `FIREWALL_CA_FILE` is also trusted by Terraform in local mode.
 - `panos-decrypt-bypass commit` as an alias of `push`.
+- `panos-decrypt-bypass terraform <args>` runs any Terraform command with the
+  app's settings, for `destroy`, `import` and state commands.
 - The status area now flags missing SCM or firewall settings for the
   selected mode.
 

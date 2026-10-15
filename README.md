@@ -96,8 +96,8 @@ docker run --rm -p 8088:8088 -e WEBGUI_DEMO=1 -e WEBGUI_AUTH=none ghcr.io/former
 ## Requirements and limits
 
 - Firewalls managed by **Strata Cloud Manager** (`MANAGEMENT=scm`, the
-  default), or a firewall **configured locally** (`MANAGEMENT=local`, PAN-OS
-  10.2 or later). One install manages one of these; run a second container for
+  default), or a firewall **configured locally** (`MANAGEMENT=local`, tested
+  with PAN-OS 11.2). One install manages one of these; run a second container for
   the other.
 - Not supported: Panorama-managed firewalls, Prisma Access, and firewalls
   whose logs are only in Strata Logging Service.
