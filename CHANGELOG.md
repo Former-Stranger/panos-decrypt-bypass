@@ -6,10 +6,15 @@ All notable changes are listed here. The format follows
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-10-25
+
 ### Fixed
 - A push that the firewall rejects (SCM status `PUSHFAIL`) now fails straight
   away with the firewall's error lines. Before, the app kept waiting until
   its 30-minute timeout.
+
+### Changed
+- FastAPI 0.146.0 (from 0.143.1).
 
 ## [0.2.0] - 2026-10-15
 
