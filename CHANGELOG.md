@@ -6,6 +6,11 @@ All notable changes are listed here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+- A push that the firewall rejects (SCM status `PUSHFAIL`) now fails straight
+  away with the firewall's error lines. Before, the app kept waiting until
+  its 30-minute timeout.
+
 ## [0.2.0] - 2026-10-15
 
 ### Added

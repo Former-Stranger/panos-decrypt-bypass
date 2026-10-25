@@ -87,6 +87,24 @@ class SCM:
         return [j for j in jobs if str(j.get("parent_id")) == parent_id]
 
 
+# A job is over once it reaches one of these, or has an end time and a result.
+# A device push the firewall rejects ends as PUSHFAIL, never FIN.
+DONE_STATUSES = {"FIN", "PUSHFAIL", "PUSHABORT", "PUSHSUCC"}
+
+
+def job_done(job: dict) -> bool:
+    return job.get("status_str") in DONE_STATUSES or bool(job.get("end_ts") and job.get("result_str") in ("OK", "WARN", "FAIL"))
+
+
+def job_errors(job: dict) -> list[str]:
+    """The device's error lines (e.g. commit validation errors) from a job's details."""
+    try:
+        details = json.loads(job.get("details") or "{}")
+    except (TypeError, ValueError):
+        return []
+    return [line.strip() for line in details.get("errors", []) if isinstance(line, str) and line.strip()]
+
+
 def push_and_wait(
     folders: list[str],
     description: str,
@@ -112,14 +130,14 @@ def push_and_wait(
             raise ScmError(f"Timed out waiting for {label}. Check Push Status in SCM (job {job_id}).")
         time.sleep(interval)
 
-    while (parent := scm.job(job_id)).get("status_str") != "FIN":
+    while not job_done(parent := scm.job(job_id)):
         log(f"  push job {job_id}: {parent.get('status_str')} {parent.get('percent', '')}%")
         sleep_or_timeout("push job")
     log(f"Push job {job_id}: {parent.get('result_str')}")
 
     while True:
         children = scm.child_jobs(job_id)
-        if all(j.get("status_str") == "FIN" for j in children):
+        if all(job_done(j) for j in children):
             break
         sleep_or_timeout("device pushes")
     for j in children:
@@ -127,6 +145,10 @@ def push_and_wait(
 
     failed = [j for j in [parent, *children] if j.get("result_str") not in ("OK", "WARN")]
     if failed:
-        log(json.dumps(failed, indent=2))
-        raise ScmError("Push failed. See job details above or Push Status in SCM.")
+        for j in failed:
+            errors = job_errors(j)
+            log(f"  {j.get('device_name') or j.get('type_str')} (job {j.get('id')}) {j.get('status_str')}:")
+            for line in errors or [json.dumps(j)]:
+                log(f"    {line}")
+        raise ScmError("Push failed. See the errors above or Push Status in SCM.")
     log("Push complete.")

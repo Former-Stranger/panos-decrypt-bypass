@@ -105,6 +105,70 @@ class DescriptionTest(unittest.TestCase):
         self.assertEqual(len(scm_api.clean_description("a" * 400)), 255)
 
 
+class FakeSCM:
+    """Replays a push: the parent job finishes OK, then the device rejects the
+    commit and its child job ends as PUSHFAIL (as SCM reports it), never FIN."""
+
+    client_id = "sa@123.iam.panserviceaccount.com"
+    details = json.dumps(
+        {
+            "errors": [
+                "Validation Error:",
+                " rulebase -> decryption -> rules -> tf-ssl-bypass-urls -> source is invalid",
+                "    Error: Failed to find address 'Example_TV'",
+                "Commit failed",
+            ]
+        }
+    )
+
+    def __init__(self, child_status="PUSHFAIL", child_result="FAIL"):
+        self.child = {
+            "id": "2",
+            "parent_id": "1",
+            "type_str": "CommitAll",
+            "device_name": "007900000000001",
+            "status_str": child_status,
+            "result_str": child_result,
+            "end_ts": "2026-10-25 15:27:39",
+            "details": self.details,
+        }
+
+    def push(self, folders, description, admins):
+        return "1", "CommitAndPush job enqueued with jobid 1"
+
+    def job(self, job_id):
+        return {"id": job_id, "type_str": "CommitAndPush", "status_str": "FIN", "result_str": "OK"}
+
+    def child_jobs(self, parent_id):
+        return [self.child]
+
+
+class PushAndWaitTest(unittest.TestCase):
+    def push(self, fake):
+        lines = []
+        with mock.patch.object(scm_api, "SCM", return_value=fake):
+            try:
+                scm_api.push_and_wait(["Home"], "test", timeout=5, interval=0, log=lines.append)
+            finally:
+                self.lines = lines
+
+    def test_device_push_failure_ends_the_wait_with_its_errors(self):
+        start = time.monotonic()
+        with self.assertRaisesRegex(scm_api.ScmError, "Push failed"):
+            self.push(FakeSCM())
+        self.assertLess(time.monotonic() - start, 2, "PUSHFAIL must not wait for the timeout")
+        self.assertIn("    Error: Failed to find address 'Example_TV'", self.lines)
+        self.assertIn("  007900000000001 (job 2) PUSHFAIL:", self.lines)
+
+    def test_successful_push(self):
+        self.push(FakeSCM(child_status="FIN", child_result="OK"))
+        self.assertEqual(self.lines[-1], "Push complete.")
+
+    def test_unfinished_job_still_waits(self):
+        self.assertFalse(scm_api.job_done({"status_str": "ACT", "result_str": "PEND", "end_ts": ""}))
+        self.assertFalse(scm_api.job_done({"status_str": "PUSHSENT", "result_str": "PEND"}))
+
+
 class SummarizePlanTest(unittest.TestCase):
     def test_url_list_update_is_auto(self):
         changes, auto = summarize_plan({"resource_changes": [URL_UPDATE, UNCHANGED]})

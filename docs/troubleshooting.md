@@ -45,6 +45,7 @@ firewall's timezone.
 | `CERTIFICATE_VERIFY_FAILED` contacting `api.sase.paloaltonetworks.com` or `auth.apps.paloaltonetworks.com` | Your firewall is decrypting the Docker host's own traffic to SCM. Bypass decryption for those hostnames (see [prerequisites](prerequisites.md#4-network-access-from-the-docker-host)). |
 | `Object … already exists` / name conflict | An object with the same name already exists in SCM. Rename it, delete it, or import it into the state (below). |
 | `Invalid Command … description is invalid` | Push descriptions are cleaned automatically; if you see this, please open an issue with the description. |
+| Push fails with `Failed to find address '…'` (or another object) | The object is in SCM but hasn't reached the firewall yet, usually because you created it and haven't pushed it. The app's pushes include only its own changes, so they can't carry your object. Push your changes from SCM, then use **Retry push** (or `panos-decrypt-bypass push`). `--all-admins` also works, but it pushes everyone's pending changes. |
 | A rule refers to an object that doesn't exist | Names in `source_addresses`, `no_decrypt_profile` and the EDL settings must exist in the folder or a parent folder. |
 
 **The push or commit failed but the apply worked:** the change is in SCM or
