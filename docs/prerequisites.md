@@ -99,6 +99,8 @@ The logs are read from the firewall itself, so no log forwarding is needed.
 | Firewall management interface | 443 | Reading decryption logs; with `local`, config and commits |
 | `auth.apps.paloaltonetworks.com` | 443 | SCM authentication (SCM only) |
 | `api.sase.paloaltonetworks.com` | 443 | SCM configuration and push (SCM only) |
+| `rdap.org` and domain registries' RDAP servers | 443 | **Look up** (optional): who registered a domain |
+| The destination being looked up | 443 | **Look up** (optional): its certificate. Never private addresses. |
 
 **If the Docker host's own traffic is decrypted by the firewall**, the
 container won't trust the forward-proxy certificate, and SCM calls fail with

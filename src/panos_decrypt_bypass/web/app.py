@@ -19,6 +19,7 @@ from panos_decrypt_bypass import __version__, bypass_lists
 from panos_decrypt_bypass.web.advice import bypass_status, explain
 from panos_decrypt_bypass.web.auth import COOKIE, Auth
 from panos_decrypt_bypass.web.deployer import Busy, DemoDeployer, Deployer
+from panos_decrypt_bypass.web.lookup import DemoLookup, Lookup
 from panos_decrypt_bypass.web.poller import Poller
 from panos_decrypt_bypass.web.settings import Settings
 from panos_decrypt_bypass.web.store import Store
@@ -33,6 +34,7 @@ settings.workspace.ensure()
 store = Store(settings.db_path, settings.timezone)
 poller = Poller(settings, store)
 deployer = (DemoDeployer if settings.demo else Deployer)(settings.workspace)
+lookup = DemoLookup() if settings.demo else Lookup()
 auth = Auth(settings.auth == "password", settings.password, settings.workspace.session_key, settings.session_hours, settings.cookie_secure)
 
 
@@ -134,6 +136,7 @@ def status() -> dict:
         "version": __version__,
         "auth": auth.enabled,
         "configured": settings.workspace.configured() or settings.demo,
+        "lookup": settings.domain_lookup,
         "management": {
             "mode": settings.workspace.mode.name,
             "target": settings.workspace.mode.target,
@@ -170,6 +173,21 @@ def events(target: str, hours: float = Query(24, gt=0, le=24 * 31)) -> list[dict
 def poll_now() -> dict:
     poller.wake.set()
     return {"ok": True}
+
+
+class LookupRequest(BaseModel):
+    target: str = Field(min_length=1, max_length=253)
+
+
+@app.post("/api/lookup", dependencies=[Depends(same_origin)])
+def lookup_target(req: LookupRequest) -> dict:
+    """Registration, DNS and certificate facts about a destination, on demand."""
+    if not settings.domain_lookup:
+        raise HTTPException(403, "Lookups are turned off (DOMAIN_LOOKUP=false).")
+    try:
+        return lookup.lookup(req.target)
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
 
 
 class BypassRequest(BaseModel):

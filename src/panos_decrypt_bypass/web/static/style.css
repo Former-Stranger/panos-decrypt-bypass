@@ -154,3 +154,24 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 .version { color: var(--muted); font-size: 12px; text-align: center; padding: 0 24px 24px; }
 .setup-hint { margin: 12px 24px 0; padding: 10px 12px; border-radius: var(--radius); background: var(--warn-bg); color: var(--warn); font-size: 13px; }
 .setup-hint[hidden] { display: none; }
+
+/* Click to copy */
+.copy { cursor: copy; border-radius: 3px; padding: 0 2px; margin: 0 -2px; }
+.copy:hover, .copy:focus-visible { background: var(--info-bg); outline: none; }
+.copy.copied::after, .copy.copy-failed::after { margin-left: 6px; font-size: 11px; font-family: system-ui, sans-serif; }
+.copy.copied::after { content: "Copied"; color: var(--ok); }
+.copy.copy-failed::after { content: "Copy failed"; color: var(--bad); }
+.offscreen { position: fixed; left: -9999px; top: 0; }
+
+/* About this destination */
+.about { margin: 4px 0 14px; padding: 10px 12px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
+.about h3 { font-size: 13px; margin: 0 0 8px; }
+.about h4 { font-size: 12px; margin: 0 0 4px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+.about .seen-from { display: flex; flex-wrap: wrap; gap: 4px 16px; align-items: baseline; margin-bottom: 8px; font-size: 13px; }
+.about .seen-from > .meta { flex-basis: 100%; font-size: 12px; }
+.about .lookup .meta { font-size: 12px; }
+.about-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px 24px; margin: 4px 0 8px; }
+.about-part .detail-grid { grid-template-columns: 1fr; gap: 4px; margin: 0; }
+.about-part .detail-grid div { word-break: break-word; }
+.about .links { font-size: 13px; }
+.about .links a { color: var(--accent); }

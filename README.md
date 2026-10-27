@@ -23,7 +23,9 @@ means digging through decryption logs, and fixing them means editing
 decryption policy and pushing config. panos-decrypt-bypass does both:
 
 - a **web GUI** that pulls decryption logs from the firewall, groups the
-  failures by destination and explains each one in plain English;
+  failures by destination, explains each one in plain English, and helps you
+  work out what an unfamiliar destination is (which clients use it, who
+  registered it, its certificate);
 - a **Bypass…** button that adds the hostname to a no-decrypt URL category,
   applies it with Terraform, and pushes it from SCM or commits it on the
   firewall, showing every step;

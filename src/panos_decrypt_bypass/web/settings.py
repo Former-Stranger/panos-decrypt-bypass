@@ -32,6 +32,7 @@ class Settings:
     retention_days: int
     extra_query: str
     demo: bool
+    domain_lookup: bool
     auth: str  # "password" or "none"
     password: str
     session_hours: int
@@ -53,6 +54,7 @@ class Settings:
             retention_days=int(os.environ.get("RETENTION_DAYS", "7")),
             extra_query=os.environ.get("FIREWALL_LOG_QUERY", "").strip(),
             demo=_bool(os.environ.get("WEBGUI_DEMO"), False),
+            domain_lookup=_bool(os.environ.get("DOMAIN_LOOKUP"), True),
             auth=os.environ.get("WEBGUI_AUTH", "password").strip().lower(),
             password=os.environ.get("WEBGUI_PASSWORD", ""),
             session_hours=int(os.environ.get("WEBGUI_SESSION_HOURS", "12")),

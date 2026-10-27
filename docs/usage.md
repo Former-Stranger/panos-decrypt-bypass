@@ -43,6 +43,35 @@ destination, error, proxy type and TLS version.
 When the same error appears across many unrelated sites, the cause is likely
 the decryption profile or firewall, not the sites.
 
+### What is this destination?
+
+Expand a row to see **About this destination**:
+
+- **Seen from** lists the clients that hit it in the time window (IP, host
+  name, user, zone, number of events). Often the quickest clue: an unfamiliar
+  domain reached only from a laptop is usually an app on that laptop.
+- **Look up** fetches, on demand:
+  - **Registration:** the registered domain, registrant (often hidden for
+    privacy), registrar, dates and name servers, from RDAP. For an IP
+    address, the network's owner and range.
+  - **DNS:** the canonical name and addresses. A canonical name like
+    `*.akamai.net` or `*.cloudfront.net` shows the CDN in front of it.
+  - **Server certificate:** subject, organization, issuer, and the other
+    names it covers. Related domains on the certificate often name the
+    product.
+  - **Research links** to VirusTotal, urlscan.io, crt.sh and a web search.
+
+Lookups send the name to rdap.org (which forwards to the domain's registry)
+and connect to the destination on port 443; private addresses are never
+contacted. Results are kept for a day. Set `DOMAIN_LOOKUP=false` to turn it
+off.
+
+### Copying values
+
+Click any value in the details or the events table to copy it; *Copied*
+confirms. Clicking a destination copies just the IP, without the port. You
+can also focus a value with Tab and press Enter.
+
 ### Bypassing a destination
 
 Click **Bypass…**:
