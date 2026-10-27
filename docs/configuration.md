@@ -24,6 +24,7 @@ container after changing them: `docker compose up -d`.
 | `WEBGUI_PORT` | `8088` | Host port in `compose.yaml`; the port `serve` listens on when run from source. |
 | `WEBGUI_HOST` | `127.0.0.1` | Address `serve` listens on when run from source (the image uses `0.0.0.0`). |
 | `WEBGUI_DEMO` | `false` | Sample logs and simulated deploys. Nothing is sent to SCM or a firewall. |
+| `DOMAIN_LOOKUP` | `true` | Show **Look up** for a destination: registration (RDAP via rdap.org), DNS and the server's certificate. Lookups only run when clicked. `false` hides the button and blocks the API. |
 
 ### Management
 

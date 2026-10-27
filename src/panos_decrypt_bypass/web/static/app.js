@@ -130,10 +130,145 @@ function issueRow(issue) {
   return row;
 }
 
+// --- Copy to clipboard --------------------------------------------------------
+
+async function copyText(text) {
+  if (navigator.clipboard && window.isSecureContext) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return;
+    } catch {
+      // Blocked (plain HTTP, permissions policy, some embedded browsers): use the old way.
+    }
+  }
+  const area = el("textarea", { class: "offscreen", readonly: true });
+  area.value = text;
+  document.body.append(area);
+  area.select();
+  try {
+    if (!document.execCommand("copy")) throw new Error("copy refused");
+  } finally {
+    area.remove();
+  }
+}
+
+// A value you can click (or press Enter on) to copy. `value` is what's copied,
+// `shown` what's displayed, e.g. the IP alone for "203.0.113.5:443".
+function copy(value, shown = value) {
+  if (value === undefined || value === null || value === "") return "—";
+  return el("span", { class: "copy", tabindex: "0", role: "button", title: "Click to copy", "aria-label": `Copy ${value}`, "data-copy": String(value) }, shown);
+}
+
+async function copyFrom(node) {
+  if (window.getSelection()?.toString()) return; // selecting text, not clicking
+  try {
+    await copyText(node.dataset.copy);
+    node.classList.add("copied");
+  } catch {
+    node.classList.add("copy-failed");
+  }
+  setTimeout(() => node.classList.remove("copied", "copy-failed"), 1200);
+}
+
+document.addEventListener("click", (e) => {
+  const node = e.target.closest?.(".copy");
+  if (node) copyFrom(node);
+});
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && e.target.classList?.contains("copy")) copyFrom(e.target);
+});
+
+// --- Detail row ------------------------------------------------------------------
+
+const kv = (label, value) => el("div", {}, el("span", {}, label), copy(Array.isArray(value) ? value.join(", ") : value));
+const lookups = new Map(); // target -> lookup result; survives the periodic re-render
+
+function seenFrom(events) {
+  const groups = new Map();
+  for (const e of events) {
+    const key = [e.src, e.src_host, e.srcuser, e.from_zone].join("|");
+    const g = groups.get(key) || { ...e, n: 0 };
+    g.n += 1;
+    groups.set(key, g);
+  }
+  return [...groups.values()].sort((a, b) => b.n - a.n).map((g) => {
+    const who = [g.src_host, g.srcuser].filter(Boolean).join(" · ");
+    return el("div", { class: "seen" },
+      copy(g.src),
+      who ? " " : "",
+      who ? copy(who) : "",
+      el("span", { class: "meta" }, `${g.from_zone ? ` zone ${g.from_zone}` : ""} · ${g.n} event${g.n === 1 ? "" : "s"}`),
+    );
+  });
+}
+
+function lookupPart(title, data, rows) {
+  const head = el("h4", {}, title);
+  if (!data) return null;
+  if (data.error) return el("div", { class: "about-part" }, head, el("p", { class: "meta" }, `Not available: ${data.error}`));
+  if (data.skipped) return el("div", { class: "about-part" }, head, el("p", { class: "meta" }, data.skipped));
+  const shown = rows.filter(([, v]) => v !== undefined && v !== null && v !== "" && !(Array.isArray(v) && !v.length));
+  return el("div", { class: "about-part" }, head,
+    shown.length ? el("div", { class: "detail-grid" }, shown.map(([label, value]) => kv(label, value))) : el("p", { class: "meta" }, "Nothing found."));
+}
+
+function lookupView(r) {
+  const c = r.certificate || {};
+  const certNames = c.names ? c.names.join(", ") + (c.more_names ? ` (+${c.more_names} more)` : "") : "";
+  const parts = r.kind === "ip"
+    ? [
+        lookupPart("Network", r.network, [["Network", r.network?.network], ["Range", r.network?.range], ["Owner", r.network?.owner], ["Country", r.network?.country]]),
+        lookupPart("DNS", r.dns, [["Reverse DNS", r.dns?.reverse]]),
+      ]
+    : [
+        lookupPart("Registration", r.registration, [
+          ["Domain", r.registration?.domain], ["Registrant", r.registration?.registrant], ["Registrar", r.registration?.registrar],
+          ["Registered", r.registration?.registered], ["Expires", r.registration?.expires], ["Name servers", r.registration?.nameservers],
+        ]),
+        lookupPart("DNS", r.dns, [["Canonical name", r.dns?.canonical !== r.target ? r.dns?.canonical : ""], ["Addresses", r.dns?.addresses]]),
+      ];
+  parts.push(lookupPart("Server certificate", c, [
+    ["Subject", c.subject], ["Organization", [c.organization, c.country].filter(Boolean).join(", ")], ["Issuer", c.issuer],
+    ["Also valid for", certNames], ["Expires", c.expires], ["Name check", c.matches === false ? `Doesn't cover ${r.target}` : ""],
+  ]));
+  const links = el("div", { class: "links" }, "Research: ",
+    r.links.flatMap((l, i) => [i ? " · " : "", el("a", { href: l.url, target: "_blank", rel: "noopener noreferrer" }, l.label)]));
+  return [el("div", { class: "about-grid" }, parts), links, el("p", { class: "meta" }, `Looked up ${ago(r.looked_up)}.`)];
+}
+
+function aboutPanel(issue, events) {
+  const lookupBox = el("div", { class: "lookup" });
+  const show = (res) => lookupBox.replaceChildren(...lookupView(res));
+  if (lookups.has(issue.target)) {
+    show(lookups.get(issue.target));
+  } else if (lastStatus?.lookup) {
+    const button = el("button", { type: "button", class: "secondary" }, "Look up");
+    button.addEventListener("click", async () => {
+      button.disabled = true;
+      button.textContent = "Looking up…";
+      try {
+        const res = await postJSON("/api/lookup", { target: issue.target });
+        lookups.set(issue.target, res);
+        show(res);
+      } catch (e) {
+        button.disabled = false;
+        button.textContent = "Look up";
+        lookupBox.append(el("p", { class: "meta" }, `Lookup failed: ${e.message}`));
+      }
+    });
+    lookupBox.replaceChildren(button, el("span", { class: "meta" },
+      " registration, DNS and server certificate. Sends the name to rdap.org and connects to the server on port 443."));
+  }
+  return el("section", { class: "about" },
+    el("h3", {}, "About this destination"),
+    events.length ? el("div", { class: "seen-from" }, el("span", { class: "meta" }, "Seen from"), seenFrom(events)) : null,
+    lookupBox,
+  );
+}
+
 async function detailRow(issue) {
   const cell = el("td", { colspan: "8" }, el("p", { class: "meta" }, "Loading events…"));
   const row = el("tr", { class: "detail" }, cell);
-  const kv = (label, value) => el("div", {}, el("span", {}, label), value || "—");
   const grid = el("div", { class: "detail-grid" },
     kv("Diagnosis", issue.advice.detail),
     kv("Cert subject / issuer", [issue.cn, issue.issuer_cn].filter(Boolean).join(" ← ")),
@@ -145,18 +280,18 @@ async function detailRow(issue) {
     const table = el("table", { class: "events" },
       el("thead", {}, el("tr", {}, ["Time", "Client", "User / host", "Destination", "Error", "Proxy", "TLS"].map((h) => el("th", {}, h)))),
       el("tbody", {}, events.map((e) => el("tr", {},
-        el("td", {}, e.receive_time),
-        el("td", {}, e.src),
-        el("td", {}, [e.srcuser, e.src_host].filter(Boolean).join(" · ") || "—"),
-        el("td", { class: "ips" }, `${e.dst}:${e.dport || "?"}`),
-        el("td", {}, e.error || "—"),
-        el("td", {}, e.proxy_type || "—"),
-        el("td", {}, e.tls_version || "—"),
+        el("td", {}, copy(e.receive_time)),
+        el("td", {}, copy(e.src)),
+        el("td", {}, copy([e.srcuser, e.src_host].filter(Boolean).join(" · "))),
+        el("td", { class: "ips" }, copy(e.dst, `${e.dst}:${e.dport || "?"}`)),
+        el("td", {}, copy(e.error)),
+        el("td", {}, copy(e.proxy_type)),
+        el("td", {}, copy(e.tls_version)),
       ))),
     );
-    cell.replaceChildren(grid, table);
+    cell.replaceChildren(grid, aboutPanel(issue, events), table);
   } catch (e) {
-    cell.replaceChildren(grid, el("p", { class: "meta" }, `Couldn't load events: ${e.message}`));
+    cell.replaceChildren(grid, aboutPanel(issue, []), el("p", { class: "meta" }, `Couldn't load events: ${e.message}`));
   }
   return row;
 }
