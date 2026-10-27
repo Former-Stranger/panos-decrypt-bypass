@@ -6,6 +6,8 @@ All notable changes are listed here. The format follows
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-10-27
+
 ### Changed
 - **Find the app on the client:** the app search skips files over 1 GB (VM
   disk images and the like) and runs 8 searches at once on macOS and Linux.

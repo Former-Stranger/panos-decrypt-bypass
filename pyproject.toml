@@ -1,6 +1,6 @@
 [project]
 name = "panos-decrypt-bypass"
-version = "0.4.0"
+version = "0.4.1"
 description = "Find TLS decryption failures on Palo Alto Networks firewalls and bypass them with Terraform, through Strata Cloud Manager or on the firewall itself"
 readme = "README.md"
 license = "MIT"
