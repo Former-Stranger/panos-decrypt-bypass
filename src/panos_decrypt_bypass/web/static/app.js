@@ -257,18 +257,18 @@ function clientCommands(os, name, ips) {
   const all = [...v4, ...v6];
   const cmds = [];
   if (os === "mac") {
-    if (name) cmds.push(["Search installed apps for the name (can take a few minutes)",
-      `grep -rl --binary-files=text -F '${name}' /Applications "$HOME/Library/Application Support" "/Library/Application Support" 2>/dev/null`]);
+    if (name) cmds.push(["Search installed apps for the name (a few minutes; skips files over 1 GB, such as VM disk images)",
+      `find /Applications "$HOME/Library/Application Support" "/Library/Application Support" -type f -size -1024M -print0 2>/dev/null | xargs -0 -n 200 -P 8 grep -l --binary-files=text -F '${name}' 2>/dev/null`]);
     if (all.length) cmds.push(["Which process is connected to it right now",
       `sudo lsof -nP ${[...v4.map((ip) => `-i@${ip}`), ...v6.map((ip) => `'-i@[${ip}]'`)].join(" ")}`]);
   } else if (os === "windows") {
-    if (name) cmds.push(["Search installed apps for the name (PowerShell; can take several minutes)",
-      `Get-ChildItem $env:ProgramFiles, \${env:ProgramFiles(x86)}, $env:LOCALAPPDATA, $env:APPDATA -Recurse -File -ErrorAction SilentlyContinue | Select-String -Pattern '${utf16Pattern(name)}' -List -ErrorAction SilentlyContinue | Select-Object -Unique Path`]);
+    if (name) cmds.push(["Search installed apps for the name (PowerShell; several minutes; skips files over 1 GB)",
+      `Get-ChildItem $env:ProgramFiles, \${env:ProgramFiles(x86)}, $env:LOCALAPPDATA, $env:APPDATA -Recurse -File -ErrorAction SilentlyContinue | Where-Object Length -lt 1GB | Select-String -Pattern '${utf16Pattern(name)}' -List -ErrorAction SilentlyContinue | Select-Object -Unique Path`]);
     if (all.length) cmds.push(["Which process is connected to it right now (PowerShell)",
       `Get-NetTCPConnection -RemoteAddress ${all.map((ip) => `'${ip}'`).join(",")} -ErrorAction SilentlyContinue | ForEach-Object { Get-Process -Id $_.OwningProcess } | Select-Object -Unique Name, Path`]);
   } else {
-    if (name) cmds.push(["Search installed apps for the name (can take a few minutes)",
-      `grep -rl --binary-files=text -F '${name}' /opt /usr/share /usr/lib "$HOME/.local" "$HOME/.config" /snap /var/lib/flatpak 2>/dev/null`]);
+    if (name) cmds.push(["Search installed apps for the name (a few minutes; skips files over 1 GB)",
+      `find /opt /usr/share /usr/lib "$HOME/.local" "$HOME/.config" /snap /var/lib/flatpak -type f -size -1024M -print0 2>/dev/null | xargs -0 -n 200 -P 8 grep -l --binary-files=text -F '${name}' 2>/dev/null`]);
     if (all.length) cmds.push(["Which process is connected to it right now",
       `sudo ss -tnp '( ${[...v4.map((ip) => `dst ${ip}`), ...v6.map((ip) => `dst [${ip}]`)].join(" or ")} )'`]);
   }

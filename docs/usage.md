@@ -68,7 +68,9 @@ Linux, filled in for this destination. Run them on a client from *Seen from*:
   usually have its name built in, so this finds unfamiliar domains that no
   public source explains (for example an alternate API domain that turned out
   to belong to a 3D printer's slicer app). After **Look up**, it searches for
-  the registered domain, which also catches other subdomains. Apps that
+  the registered domain, which also catches other subdomains. It skips
+  files over 1 GB (VM disk images and the like) and, on macOS and Linux,
+  searches 8 files at a time, so it usually takes a few minutes. Apps that
   compress or encrypt their files won't match.
 - **Which process is connected right now** to the destination's IPs, using
   `lsof`, `Get-NetTCPConnection` or `ss`. Run it while the app is active.
