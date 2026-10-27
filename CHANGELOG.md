@@ -6,6 +6,8 @@ All notable changes are listed here. The format follows
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-10-27
+
 ### Added
 - **Find the app on the client**, under About this destination: ready-made
   macOS, Windows and Linux commands that search the client's installed apps
