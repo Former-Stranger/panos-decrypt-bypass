@@ -83,6 +83,7 @@ def get_certificate(address: str, server_name: str | None) -> dict:
     """The certificate a server presents. The chain must be trusted (so the
     fields can be read); whether the name matches is reported separately."""
     ctx = ssl.create_default_context()
+    ctx.minimum_version = ssl.TLSVersion.TLSv1_2
     ctx.check_hostname = False
     with socket.create_connection((address, 443), timeout=TIMEOUT) as sock, ctx.wrap_socket(sock, server_hostname=server_name) as tls:
         return tls.getpeercert()

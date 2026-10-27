@@ -98,6 +98,7 @@ class Firewall:
         self.timeout = timeout
         # ca_file: trust a private CA (e.g. the Home CA that signed the mgmt cert).
         self.context = ssl.create_default_context(cafile=ca_file)
+        self.context.minimum_version = ssl.TLSVersion.TLSv1_2
         if not verify_tls:
             self.context.check_hostname = False
             self.context.verify_mode = ssl.CERT_NONE
