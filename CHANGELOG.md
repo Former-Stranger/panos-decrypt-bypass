@@ -6,6 +6,8 @@ All notable changes are listed here. The format follows
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-27
+
 ### Added
 - **About this destination** in each expanded row: the clients that reached
   it, and an on-demand **Look up** with the domain's registration (RDAP), DNS
@@ -14,6 +16,10 @@ All notable changes are listed here. The format follows
   addresses. `DOMAIN_LOOKUP=false` turns it off.
 - Click any value in the details or the events table to copy it. Clicking a
   destination copies the IP without the port.
+
+### Security
+- TLS connections to the firewall's XML API and for lookups require TLS 1.2
+  or later.
 
 ## [0.2.1] - 2026-10-25
 
