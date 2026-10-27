@@ -6,6 +6,13 @@ All notable changes are listed here. The format follows
 
 ## [Unreleased]
 
+### Added
+- **Find the app on the client**, under About this destination: ready-made
+  macOS, Windows and Linux commands that search the client's installed apps
+  for the destination's name, and show which process is connected to its IPs
+  right now. Commands are only built from names and addresses that contain
+  plainly safe characters.
+
 ## [0.3.0] - 2026-10-27
 
 ### Added

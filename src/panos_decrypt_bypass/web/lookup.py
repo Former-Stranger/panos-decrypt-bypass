@@ -280,18 +280,23 @@ class DemoLookup(Lookup):
 
     def __init__(self):
         super().__init__(
-            fetch_json=lambda url: {
-                "ldhName": url.rsplit("/", 1)[1],
-                "entities": [
-                    {"roles": ["registrar"], "vcardArray": ["vcard", [["fn", {}, "text", "Example Registrar, Inc."]]]},
-                    {"roles": ["registrant"], "vcardArray": ["vcard", [["org", {}, "text", "Example Corp"], ["adr", {"cc": "US"}, "text", ""]]]},
-                ],
-                "events": [{"eventAction": "registration", "eventDate": "2014-03-02T00:00:00Z"}],
-                "nameservers": [{"ldhName": "ns1.example.net"}, {"ldhName": "ns2.example.net"}],
-                "name": "EXAMPLE-NET",
-                "startAddress": "203.0.113.0",
-                "endAddress": "203.0.113.255",
-            },
+            # Only two-label names are "registered", like a real registry.
+            fetch_json=lambda url: (
+                None
+                if "/domain/" in url and url.rsplit("/", 1)[1].count(".") > 1
+                else {
+                    "ldhName": url.rsplit("/", 1)[1],
+                    "entities": [
+                        {"roles": ["registrar"], "vcardArray": ["vcard", [["fn", {}, "text", "Example Registrar, Inc."]]]},
+                        {"roles": ["registrant"], "vcardArray": ["vcard", [["org", {}, "text", "Example Corp"], ["adr", {"cc": "US"}, "text", ""]]]},
+                    ],
+                    "events": [{"eventAction": "registration", "eventDate": "2014-03-02T00:00:00Z"}],
+                    "nameservers": [{"ldhName": "ns1.example.net"}, {"ldhName": "ns2.example.net"}],
+                    "name": "EXAMPLE-NET",
+                    "startAddress": "203.0.113.0",
+                    "endAddress": "203.0.113.255",
+                }
+            ),
             resolve=lambda host: {"canonical": f"{host}.edgekey.example", "addresses": ["93.184.215.14"]},
             reverse_dns=lambda address: "edge-1.example.net",
             get_certificate=lambda address, host: {

@@ -175,3 +175,13 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 .about-part .detail-grid div { word-break: break-word; }
 .about .links { font-size: 13px; }
 .about .links a { color: var(--accent); }
+
+/* Find the app on the client */
+.find-app { margin-top: 10px; border-top: 1px solid var(--border); padding-top: 8px; }
+.find-app summary { cursor: pointer; font-size: 13px; font-weight: 600; }
+.find-app .os-picker { display: flex; gap: 6px; margin: 8px 0; }
+.find-app .os-picker button { padding: 2px 10px; font-size: 12px; }
+.find-app .meta { font-size: 12px; margin: 6px 0 4px; }
+pre.cmd { margin: 0 0 6px; padding: 8px 10px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 6px;
+  font-family: var(--mono); font-size: 12px; white-space: pre-wrap; word-break: break-all; }
+pre.cmd.copy:hover { background: var(--info-bg); }
