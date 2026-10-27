@@ -6,6 +6,11 @@ All notable changes are listed here. The format follows
 
 ## [Unreleased]
 
+### Changed
+- **Find the app on the client:** the app search skips files over 1 GB (VM
+  disk images and the like) and runs 8 searches at once on macOS and Linux.
+  On a Mac with 63 GB to search it went from over 10 minutes to about 2.
+
 ## [0.4.0] - 2026-10-27
 
 ### Added
