@@ -236,6 +236,92 @@ function lookupView(r) {
   return [el("div", { class: "about-grid" }, parts), links, el("p", { class: "meta" }, `Looked up ${ago(r.looked_up)}.`)];
 }
 
+// --- Find the app on the client --------------------------------------------------
+// Commands to run on the client that made the connection. Hostnames come from
+// the TLS handshake and are attacker-controlled, so only names and IPs made of
+// plainly safe characters ever reach a command; anything else gets none.
+
+const SAFE_NAME = /^(?=.{4,253}$)[a-z0-9](?:[a-z0-9-]{0,62})(?:\.[a-z0-9](?:[a-z0-9-]{0,62}))+$/;
+const SAFE_IPV4 = /^(?:(?:25[0-5]|2[0-4]\d|1?\d?\d)\.){3}(?:25[0-5]|2[0-4]\d|1?\d?\d)$/;
+const SAFE_IPV6 = /^[0-9a-f]{0,4}(?::[0-9a-f]{0,4}){2,7}$/;
+const OSES = [["mac", "macOS"], ["windows", "Windows"], ["linux", "Linux"]];
+const findAppOpen = new Set(); // targets whose panel is open; kept across the periodic re-render
+
+// PowerShell regex that also matches UTF-16 text (a NUL after each character),
+// which is how many Windows programs store strings.
+const utf16Pattern = (name) => [...name].map((c) => (c === "." ? "\\." : c) + "\\x00?").join("");
+
+function clientCommands(os, name, ips) {
+  const v4 = ips.filter((ip) => SAFE_IPV4.test(ip)).slice(0, 6);
+  const v6 = ips.filter((ip) => SAFE_IPV6.test(ip)).slice(0, 4);
+  const all = [...v4, ...v6];
+  const cmds = [];
+  if (os === "mac") {
+    if (name) cmds.push(["Search installed apps for the name (can take a few minutes)",
+      `grep -rl --binary-files=text -F '${name}' /Applications "$HOME/Library/Application Support" "/Library/Application Support" 2>/dev/null`]);
+    if (all.length) cmds.push(["Which process is connected to it right now",
+      `sudo lsof -nP ${[...v4.map((ip) => `-i@${ip}`), ...v6.map((ip) => `'-i@[${ip}]'`)].join(" ")}`]);
+  } else if (os === "windows") {
+    if (name) cmds.push(["Search installed apps for the name (PowerShell; can take several minutes)",
+      `Get-ChildItem $env:ProgramFiles, \${env:ProgramFiles(x86)}, $env:LOCALAPPDATA, $env:APPDATA -Recurse -File -ErrorAction SilentlyContinue | Select-String -Pattern '${utf16Pattern(name)}' -List -ErrorAction SilentlyContinue | Select-Object -Unique Path`]);
+    if (all.length) cmds.push(["Which process is connected to it right now (PowerShell)",
+      `Get-NetTCPConnection -RemoteAddress ${all.map((ip) => `'${ip}'`).join(",")} -ErrorAction SilentlyContinue | ForEach-Object { Get-Process -Id $_.OwningProcess } | Select-Object -Unique Name, Path`]);
+  } else {
+    if (name) cmds.push(["Search installed apps for the name (can take a few minutes)",
+      `grep -rl --binary-files=text -F '${name}' /opt /usr/share /usr/lib "$HOME/.local" "$HOME/.config" /snap /var/lib/flatpak 2>/dev/null`]);
+    if (all.length) cmds.push(["Which process is connected to it right now",
+      `sudo ss -tnp '( ${[...v4.map((ip) => `dst ${ip}`), ...v6.map((ip) => `dst [${ip}]`)].join(" or ")} )'`]);
+  }
+  return cmds;
+}
+
+let findAppOs = (() => {
+  try {
+    return localStorage.getItem("findAppOs") || (navigator.userAgent.includes("Windows") ? "windows" : "mac");
+  } catch {
+    return "mac";
+  }
+})();
+
+function findAppPanel(issue, events) {
+  const looked = lookups.get(issue.target);
+  const isIp = SAFE_IPV4.test(issue.target) || issue.target.includes(":");
+  const candidate = (looked?.registration?.domain || (isIp ? "" : issue.target)).toLowerCase();
+  const name = SAFE_NAME.test(candidate) ? candidate : "";
+  const ips = (issue.dst_ips || []).map((ip) => ip.toLowerCase());
+  const clients = [...new Set(events.map((e) => e.src).filter(Boolean))];
+  const body = el("div", { class: "find-app-body" });
+  const picker = el("div", { class: "os-picker", role: "group", "aria-label": "Client operating system" });
+
+  const draw = () => {
+    picker.replaceChildren(...OSES.map(([key, label]) => el("button", {
+      type: "button", class: key === findAppOs ? "" : "secondary", "aria-pressed": key === findAppOs ? "true" : "false",
+      onclick: () => {
+        findAppOs = key;
+        try { localStorage.setItem("findAppOs", key); } catch { /* not saved */ }
+        draw();
+      },
+    }, label)));
+    const cmds = clientCommands(findAppOs, name, ips);
+    body.replaceChildren(...(cmds.length ? cmds.flatMap(([label, cmd]) => [
+      el("p", { class: "meta" }, label),
+      el("pre", { class: "cmd copy", tabindex: "0", role: "button", title: "Click to copy", "aria-label": `Copy command: ${label}`, "data-copy": cmd }, cmd),
+    ]) : [el("p", { class: "meta" }, "No command for this destination: its name or address contains characters that aren't safe to put in a command.")]));
+  };
+  draw();
+
+  const panel = el("details", { class: "find-app", open: findAppOpen.has(issue.target) },
+    el("summary", {}, "Find the app on the client"),
+    el("p", { class: "meta" },
+      `Run these on ${clients.length ? clients.join(", ") : "the client"}${name ? `. The search looks for ${name} inside installed apps` : ""}. ` +
+      "Apps that compress or encrypt their files won't match. Phones, TVs and other devices can't be searched: check which apps they run, or the vendor's support pages."),
+    picker,
+    body,
+  );
+  panel.addEventListener("toggle", () => (panel.open ? findAppOpen.add(issue.target) : findAppOpen.delete(issue.target)));
+  return panel;
+}
+
 function aboutPanel(issue, events) {
   const lookupBox = el("div", { class: "lookup" });
   const show = (res) => lookupBox.replaceChildren(...lookupView(res));
@@ -249,7 +335,7 @@ function aboutPanel(issue, events) {
       try {
         const res = await postJSON("/api/lookup", { target: issue.target });
         lookups.set(issue.target, res);
-        show(res);
+        render(lastIssues); // the find-app commands can now use the registered domain
       } catch (e) {
         button.disabled = false;
         button.textContent = "Look up";
@@ -263,6 +349,7 @@ function aboutPanel(issue, events) {
     el("h3", {}, "About this destination"),
     events.length ? el("div", { class: "seen-from" }, el("span", { class: "meta" }, "Seen from"), seenFrom(events)) : null,
     lookupBox,
+    findAppPanel(issue, events),
   );
 }
 

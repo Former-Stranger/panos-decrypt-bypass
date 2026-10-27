@@ -61,6 +61,23 @@ Expand a row to see **About this destination**:
     product.
   - **Research links** to VirusTotal, urlscan.io, crt.sh and a web search.
 
+**Find the app on the client** gives two commands for macOS, Windows or
+Linux, filled in for this destination. Run them on a client from *Seen from*:
+
+- **Search installed apps** for the name. Apps that talk to a backend
+  usually have its name built in, so this finds unfamiliar domains that no
+  public source explains (for example an alternate API domain that turned out
+  to belong to a 3D printer's slicer app). After **Look up**, it searches for
+  the registered domain, which also catches other subdomains. Apps that
+  compress or encrypt their files won't match.
+- **Which process is connected right now** to the destination's IPs, using
+  `lsof`, `Get-NetTCPConnection` or `ss`. Run it while the app is active.
+
+Hostnames in decryption logs come from the client's TLS handshake, so the
+page only builds a command from a name made of letters, digits, dots and
+hyphens, and from well-formed IP addresses. Anything else gets no command.
+Click a command to copy it.
+
 Lookups send the name to rdap.org (which forwards to the domain's registry)
 and connect to the destination on port 443; private addresses are never
 contacted. Results are kept for a day. Set `DOMAIN_LOOKUP=false` to turn it

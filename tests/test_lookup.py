@@ -138,6 +138,7 @@ class LookupTest(unittest.TestCase):
 
     def test_demo_needs_no_network(self):
         r = DemoLookup().lookup("api.pinnedapp.example")
+        self.assertEqual(r["registration"]["domain"], "pinnedapp.example")
         self.assertEqual(r["registration"]["registrant"], "Example Corp (US)")
         self.assertTrue(r["certificate"]["matches"])
 
